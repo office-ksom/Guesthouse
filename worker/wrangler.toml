@@ -1,0 +1,26 @@
+name = "ksom-guesthouse-worker"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# ─── Replace these placeholders with your real values ───────────────────────
+account_id = "89601c100f926df89b9069f1541aa36e"
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ksom-guesthouse-db"
+database_id = "e66bccce-7e84-4095-a80c-8ea3b70a45b2"
+
+[vars]
+JWT_SECRET = "b3c79a25db1149e89d1b702e8d35fbc7492c10bcf3adfa5eb19d4e5f1f9a2e88"
+ENVIRONMENT = "development"
+GOOGLE_CLIENT_ID = "178011124464-cl8513mdc3iu6vi33eh178murjs7sdbc.apps.googleusercontent.com"
+
+[[routes]]
+pattern = "guesthouse.ksom.res.in/api/*"
+zone_name = "ksom.res.in"
+
+[site]
+bucket = "../public"

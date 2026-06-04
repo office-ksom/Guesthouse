@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rooms — KSoM Guesthouse Admin</title>
+  <meta name="robots" content="noindex, nofollow"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>"/>
+  <link rel="stylesheet" href="/css/main.css"/>
+  <link rel="stylesheet" href="/css/admin.css"/>
+</head>
+<body>
+<div class="admin-layout" id="app"></div>
+<script type="module">
+import { initAdminLayout, api } from '/js/auth.js';
+import { renderAdminShell, renderAdminTopbar } from '/js/admin/shell.js';
+import { formatCurrency, toast, confirm } from '/js/ui.js';
+
+document.getElementById('app').innerHTML = `
+  ${renderAdminShell()}
+  <div class="admin-main">
+    ${renderAdminTopbar('Room Management', 'Add, edit, and manage guesthouse rooms')}
+    <div class="admin-content">
+      <div class="data-table-wrapper">
+        <div class="data-table-header">
+          <span class="data-table-header__title">🏠 All Rooms</span>
+          <button class="btn btn-primary btn-sm" id="add-room-btn" data-admin-only>+ Add Room</button>
+        </div>
+        <div id="rooms-wrap">
+          <div style="padding:3rem;text-align:center"><div class="spinner" style="margin:0 auto 1rem"></div><p>Loading rooms…</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Room Modal -->
+  <div class="modal-overlay" id="room-modal" style="display:none">
+    <div class="modal" style="max-width:520px;">
+      <div class="modal__header">
+        <h3 class="modal__title" id="rm-modal-title">Add Room</h3>
+        <span class="modal__close" id="rm-modal-close">✕</span>
+      </div>
+      <div class="modal__body">
+        <form id="room-form">
+          <input type="hidden" id="rm-id"/>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4);">
+            <div class="form-group">
+              <label class="form-label required">Room Name</label>
+              <input class="form-control" id="rm-name" placeholder="e.g. Room 101" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label required">Type</label>
+              <select class="form-control" id="rm-type">
+                <option value="single">Single</option>
+                <option value="double">Double</option>
+                <option value="suite">Suite</option>
+              </select>
+            </div>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4);">
+            <div class="form-group">
+              <label class="form-label required">AC Status</label>
+              <select class="form-control" id="rm-ac">
+                <option value="1">AC Room</option>
+                <option value="0">Non-AC Room</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label required">Capacity (guests)</label>
+              <input class="form-control" type="number" id="rm-capacity" min="1" max="10" value="1"/>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4);">
+            <div class="form-group">
+              <label class="form-label required">Price per Night (₹)</label>
+              <input class="form-control" type="number" id="rm-price" min="0" step="50" placeholder="800" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Active</label>
+              <select class="form-control" id="rm-active">
+                <option value="1">Yes — visible to sponsors</option>
+                <option value="0">No — hidden from sponsors</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:var(--space-4);">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="rm-desc" rows="2" placeholder="Room description…" style="resize:vertical"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Amenities <span style="font-weight:400;color:var(--text-muted)">(comma-separated)</span></label>
+            <input class="form-control" id="rm-amenities" placeholder="AC, Wi-Fi, Hot Water, TV, Balcony"/>
+          </div>
+        </form>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn-ghost btn-sm" id="rm-cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="rm-save">Save Room</button>
+      </div>
+    </div>
+  </div>
+`;
+
+initAdminLayout('Room Management', 'rooms');
+
+async function loadRooms() {
+  const wrap = document.getElementById('rooms-wrap');
+  try {
+    const data = await api.getRooms({ all: true });
+    const rooms = data.rooms || [];
+    if (!rooms.length) { wrap.innerHTML = `<div style="padding:3rem;text-align:center;color:var(--text-muted)">No rooms found. Add your first room.</div>`; return; }
+    wrap.innerHTML = `
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Type</th><th>AC Status</th><th>Capacity</th><th>Price/Night</th><th>Amenities</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${rooms.map(r => `
+              <tr>
+                <td style="font-weight:700">${r.name}</td>
+                <td><span style="text-transform:capitalize">${r.type}</span></td>
+                <td>
+                  <span style="font-size:0.75rem;padding:2px 6px;border-radius:4px;font-weight:700;background-color:${r.is_ac ? '#e0f2fe;color:#0369a1' : '#f3f4f6;color:#374151'}">
+                    ${r.is_ac ? 'AC' : 'Non-AC'}
+                  </span>
+                </td>
+                <td>${r.capacity} guest${r.capacity>1?'s':''}</td>
+                <td style="font-family:var(--font-heading);font-weight:700;color:var(--primary)">${formatCurrency(r.price_per_night)}</td>
+                <td style="max-width:200px"><div style="display:flex;flex-wrap:wrap;gap:4px">${(r.amenities||[]).slice(0,3).map(a=>`<span class="amenity-tag">${a}</span>`).join('')}${r.amenities?.length>3?`<span class="amenity-tag">+${r.amenities.length-3}</span>`:''}</div></td>
+                <td>${r.is_active ? '<span style="color:var(--success);font-weight:600;font-size:0.8rem">● Active</span>' : '<span style="color:var(--text-muted);font-weight:600;font-size:0.8rem">● Inactive</span>'}</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="icon-btn icon-btn-edit" onclick="editRoom(${r.id})" title="Edit">✏️</button>
+                    <button class="icon-btn icon-btn-delete" onclick="toggleRoom(${r.id},${r.is_active})" title="${r.is_active?'Deactivate':'Activate'}">${r.is_active?'🔴':'🟢'}</button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch(e) {
+    wrap.innerHTML = `<div style="padding:2rem;color:var(--error)">Failed to load rooms.</div>`;
+  }
+}
+
+let editingId = null;
+const modal = document.getElementById('room-modal');
+
+function openModal(room = null) {
+  editingId = room?.id || null;
+  document.getElementById('rm-modal-title').textContent = room ? 'Edit Room' : 'Add Room';
+  document.getElementById('rm-id').value = room?.id || '';
+  document.getElementById('rm-name').value = room?.name || '';
+  document.getElementById('rm-type').value = room?.type || 'single';
+  document.getElementById('rm-ac').value = String(room?.is_ac ?? 1);
+  document.getElementById('rm-capacity').value = room?.capacity || 1;
+  document.getElementById('rm-price').value = room?.price_per_night || '';
+  document.getElementById('rm-desc').value = room?.description || '';
+  document.getElementById('rm-amenities').value = (room?.amenities || []).join(', ');
+  document.getElementById('rm-active').value = String(room?.is_active ?? 1);
+  modal.style.display = 'flex';
+}
+
+window.editRoom = async (id) => {
+  try {
+    const { room } = await api.getRoom(id);
+    openModal(room);
+  } catch(e) { toast('Failed to load room.', 'error'); }
+};
+
+window.toggleRoom = async (id, current) => {
+  confirm(`${current ? 'Deactivate' : 'Activate'} this room?`, async () => {
+    try {
+      await api.updateRoom(id, { is_active: current ? 0 : 1 });
+      toast(`Room ${current ? 'deactivated' : 'activated'}.`);
+      loadRooms();
+    } catch(e) { toast('Failed to update room.', 'error'); }
+  });
+};
+
+document.getElementById('add-room-btn')?.addEventListener('click', () => openModal());
+document.getElementById('rm-cancel').addEventListener('click', () => modal.style.display = 'none');
+document.getElementById('rm-modal-close').addEventListener('click', () => modal.style.display = 'none');
+modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+
+document.getElementById('rm-save').addEventListener('click', async () => {
+  const name  = document.getElementById('rm-name').value.trim();
+  const price = parseFloat(document.getElementById('rm-price').value);
+  if (!name || price === undefined || isNaN(price)) { toast('Room name and price are required.', 'error'); return; }
+
+  const body = {
+    name,
+    type:            document.getElementById('rm-type').value,
+    is_ac:           parseInt(document.getElementById('rm-ac').value),
+    capacity:        parseInt(document.getElementById('rm-capacity').value),
+    price_per_night: price,
+    description:     document.getElementById('rm-desc').value.trim() || null,
+    amenities:       document.getElementById('rm-amenities').value.split(',').map(a => a.trim()).filter(Boolean),
+    is_active:       parseInt(document.getElementById('rm-active').value),
+  };
+
+  const btn = document.getElementById('rm-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    if (editingId) { await api.updateRoom(editingId, body); toast('Room updated!'); }
+    else { await api.createRoom(body); toast('Room created!'); }
+    modal.style.display = 'none';
+    loadRooms();
+  } catch(e) { toast(e.message || 'Failed to save room.', 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Save Room'; }
+});
+
+loadRooms();
+</script>
+</body>
+</html>

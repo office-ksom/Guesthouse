@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Public Site Sections Manager — KSoM Guesthouse Admin</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+  <style>
+    .cms-layout { display: grid; grid-template-columns: 240px 1fr; gap: var(--space-6); min-height: 70vh; }
+    @media (max-width: 900px) { .cms-layout { grid-template-columns: 1fr; } }
+    
+    .cms-sidebar { background: white; border-radius: var(--radius-xl); border: 1px solid var(--border); padding: var(--space-4); display: flex; flex-direction: column; gap: 4px; height: fit-content; }
+    .cms-sidebar-btn { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); border: none; background: transparent; text-align: left; cursor: pointer; color: var(--text-secondary); font-weight: 600; font-size: 0.9rem; transition: all var(--transition-fast); }
+    .cms-sidebar-btn:hover { background: var(--gray-50); color: var(--text-primary); }
+    .cms-sidebar-btn.active { background: var(--primary); color: white; }
+
+    .section-card { background: white; border-radius: var(--radius-xl); border: 1px solid var(--border); margin-bottom: var(--space-4); box-shadow: var(--shadow-sm); overflow: hidden; }
+    .section-header-bar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4) var(--space-6); background: var(--gray-50); border-bottom: 1px solid var(--border); }
+    .section-title-wrap { display: flex; align-items: center; gap: var(--space-3); }
+    .section-badge { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: var(--radius-full); }
+    .section-badge.standard { background: #e0f2fe; color: #0369a1; }
+    .section-badge.custom { background: #fef3c7; color: #92400e; }
+    
+    .section-actions { display: flex; align-items: center; gap: var(--space-2); }
+    .section-body-editor { padding: var(--space-6); border-top: 1px dashed var(--border); display: none; }
+    .section-body-editor.expanded { display: block; }
+    
+    .card-list-editor { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); background: var(--gray-50); margin-bottom: var(--space-4); }
+    .card-list-item { display: grid; grid-template-columns: 80px 1.5fr 3fr; gap: var(--space-3); padding: var(--space-3); border-bottom: 1px solid var(--border); }
+    .card-list-item:last-child { border-bottom: none; }
+    
+    .cms-footer-bar { display: flex; gap: var(--space-4); margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+<div class="admin-layout" id="app"></div>
+
+<script type="module">
+  import { initAdminLayout, api } from '/js/auth.js';
+  import { renderAdminShell, renderAdminTopbar } from '/js/admin/shell.js';
+  import { toast, confirm } from '/js/ui.js';
+
+  document.getElementById('app').innerHTML = `
+    ${renderAdminShell()}
+    <div class="admin-main">
+      ${renderAdminTopbar('Public Site Manager', 'Reorder, hide, add, and update public website sections')}
+      <div class="admin-content">
+        
+        <div class="cms-layout">
+          <!-- Page Selection Sidebar -->
+          <div class="cms-sidebar">
+            <h4 style="padding:var(--space-2) var(--space-3); font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.05em">Select Page</h4>
+            <button class="cms-sidebar-btn active" data-page="index">🏠 Homepage</button>
+            <button class="cms-sidebar-btn" data-page="rooms">🛏️ Rooms Page</button>
+            <button class="cms-sidebar-btn" data-page="availability">📅 Availability</button>
+            <button class="cms-sidebar-btn" data-page="gallery">🖼️ Gallery Page</button>
+            <button class="cms-sidebar-btn" data-page="contact">📞 Contact Page</button>
+          </div>
+
+          <!-- Page Content Editor -->
+          <div>
+            <div id="page-editor-container">
+              <!-- Dynamically populated page sections list -->
+            </div>
+            
+            <div class="cms-footer-bar">
+              <button class="btn btn-primary" id="save-cms-btn">Save All Page Sections</button>
+              <button class="btn btn-outline" id="reset-cms-btn">Reset to Default Layout</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  initAdminLayout('Public Site Manager', 'site-settings');
+
+  let activePage = 'index';
+  let settings = {};
+  let pageSections = [];
+  let galleryItems = [];
+
+  // Page switcher
+  document.querySelectorAll('.cms-sidebar-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cms-sidebar-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activePage = btn.dataset.page;
+      loadPageSections();
+    });
+  });
+
+  async function loadSettings() {
+    try {
+      const data = await api.getSettings();
+      settings = data.settings || {};
+      loadPageSections();
+    } catch (e) {
+      toast(e.message || 'Failed to load site configurations.', 'error');
+    }
+  }
+
+  function loadPageSections() {
+    const key = `sections_${activePage}`;
+    const val = settings[key] || '[]';
+    try {
+      pageSections = JSON.parse(val);
+    } catch {
+      pageSections = [];
+    }
+
+    if (activePage === 'gallery') {
+      try {
+        galleryItems = JSON.parse(settings.gallery_items || '[]');
+      } catch {
+        galleryItems = [];
+      }
+    }
+
+    renderSectionsList();
+  }
+
+  function renderSectionsList() {
+    const container = document.getElementById('page-editor-container');
+    
+    if (pageSections.length === 0) {
+      container.innerHTML = `<div class="card" style="padding:3rem; text-align:center; color:var(--text-muted)">No sections configured for this page.</div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4)">
+        <h3 style="font-family:var(--font-heading); font-size:1.15rem; color:var(--primary); margin:0">
+          Section Layout Configuration
+        </h3>
+        <button class="btn btn-secondary btn-sm" id="add-section-btn">+ Add Custom Section</button>
+      </div>
+
+      <div id="sections-list-wrap">
+        ${pageSections.map((sec, idx) => {
+          const isVisible = sec.visible !== false;
+          const label = sec.title || `Section: ${sec.id}`;
+          const isCustom = sec.type === 'custom';
+
+          return `
+            <div class="section-card" data-idx="${idx}">
+              <div class="section-header-bar">
+                <div class="section-title-wrap">
+                  <span style="font-size:1.1rem; cursor:pointer" onclick="toggleExpand(${idx})">
+                    ${sec.expanded ? '▼' : '▶'}
+                  </span>
+                  <strong style="color:var(--text-primary); cursor:pointer" onclick="toggleExpand(${idx})">${label}</strong>
+                  <span class="section-badge ${isCustom ? 'custom' : 'standard'}">${sec.type}</span>
+                  ${!isVisible ? `<span style="font-size:0.75rem; background:#fee2e2; color:#b91c1c; padding:2px 8px; border-radius:4px; font-weight:700">HIDDEN</span>` : ''}
+                </div>
+                
+                <div class="section-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="moveSection(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Move Up">⬆️</button>
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="moveSection(${idx}, 1)" ${idx === pageSections.length - 1 ? 'disabled' : ''} title="Move Down">⬇️</button>
+                  
+                  <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:600; cursor:pointer; margin:0 8px">
+                    <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="toggleVisibility(${idx}, this.checked)" />
+                    Visible
+                  </label>
+
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="toggleExpand(${idx})">
+                    ${sec.expanded ? 'Close' : 'Edit Content'}
+                  </button>
+
+                  ${isCustom ? `
+                    <button type="button" class="btn btn-ghost btn-sm" style="color:var(--error)" onclick="deleteCustomSection(${idx})" title="Delete Custom Section">✕ Remove</button>
+                  ` : ''}
+                </div>
+              </div>
+
+              <div class="section-body-editor ${sec.expanded ? 'expanded' : ''}">
+                ${renderEditorFields(sec, idx)}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    // Hook add section button
+    document.getElementById('add-section-btn').addEventListener('click', addCustomSection);
+  }
+
+  // Expansion toggle
+  window.toggleExpand = (idx) => {
+    pageSections[idx].expanded = !pageSections[idx].expanded;
+    renderSectionsList();
+  };
+
+  // Visibility toggle
+  window.toggleVisibility = (idx, checked) => {
+    pageSections[idx].visible = checked;
+    renderSectionsList();
+  };
+
+  // Reordering
+  window.moveSection = (idx, direction) => {
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= pageSections.length) return;
+    
+    const temp = pageSections[idx];
+    pageSections[idx] = pageSections[targetIdx];
+    pageSections[targetIdx] = temp;
+    
+    renderSectionsList();
+  };
+
+  // Delete custom section
+  window.deleteCustomSection = (idx) => {
+    confirm('Are you sure you want to delete this custom section?', () => {
+      pageSections.splice(idx, 1);
+      renderSectionsList();
+    }, true);
+  };
+
+  // Add custom section
+  function addCustomSection() {
+    const customId = `custom_${Date.now()}`;
+    pageSections.push({
+      id: customId,
+      type: 'custom',
+      title: 'New Custom Section',
+      visible: true,
+      expanded: true,
+      content: {
+        title: 'Custom Title',
+        subtitle: 'Enter a short description or subtitle here',
+        body: '<p>Enter text or custom HTML here.</p>',
+        background: 'white'
+      }
+    });
+    renderSectionsList();
+  }
+
+  // Render inputs based on section type
+  function renderEditorFields(sec, idx) {
+    const c = sec.content || {};
+
+    if (sec.type === 'custom') {
+      return `
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin-bottom:var(--space-4)">
+          <div class="form-group">
+            <label class="form-label">Section Title</label>
+            <input class="form-control" type="text" value="${c.title || ''}" onchange="updateField(${idx}, 'title', this.value)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Section Subtitle / Description</label>
+            <input class="form-control" type="text" value="${c.subtitle || ''}" onchange="updateField(${idx}, 'subtitle', this.value)" />
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1.5fr; gap:var(--space-4); margin-bottom:var(--space-4)">
+          <div class="form-group">
+            <label class="form-label">Background Style</label>
+            <select class="form-control" onchange="updateField(${idx}, 'background', this.value)">
+              <option value="white" ${c.background === 'white' ? 'selected' : ''}>Plain White</option>
+              <option value="gray" ${c.background === 'gray' ? 'selected' : ''}>Serene Light Gray</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Admin Label (Internal title)</label>
+            <input class="form-control" type="text" value="${sec.title || ''}" onchange="updateSectionTitle(${idx}, this.value)" placeholder="Internal administration label" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Section Content HTML / Text</label>
+          <textarea class="form-control" rows="8" onchange="updateField(${idx}, 'body', this.value)" style="font-family:monospace; resize:vertical">${c.body || ''}</textarea>
+        </div>
+      `;
+    }
+
+    switch (sec.id) {
+      case 'hero':
+        return `
+          <div class="form-group" style="margin-bottom:var(--space-4)">
+            <label class="form-label">Hero Title (HTML Supported)</label>
+            <input class="form-control" type="text" value="${c.headline || ''}" onchange="updateField(${idx}, 'headline', this.value)" />
+          </div>
+          <div class="form-group" style="margin-bottom:var(--space-4)">
+            <label class="form-label">Hero Subtitle</label>
+            <textarea class="form-control" rows="3" onchange="updateField(${idx}, 'subtitle', this.value)" style="resize:vertical">${c.subtitle || ''}</textarea>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4)">
+            <div class="form-group">
+              <label class="form-label">Primary Button Label</label>
+              <input class="form-control" type="text" value="${c.btn1_label || ''}" onchange="updateField(${idx}, 'btn1_label', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Secondary Button Label</label>
+              <input class="form-control" type="text" value="${c.btn2_label || ''}" onchange="updateField(${idx}, 'btn2_label', this.value)" />
+            </div>
+          </div>
+        `;
+      case 'stats':
+        return `
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--space-4)">
+            ${[1, 2, 3, 4].map(num => `
+              <div style="border:1px solid var(--border); padding:var(--space-4); border-radius:var(--radius-md); background:var(--gray-50)">
+                <h5 style="margin-bottom:var(--space-3); color:var(--primary)">Stat Element ${num}</h5>
+                <div class="form-group" style="margin-bottom:var(--space-2)">
+                  <label class="form-label">Count / Text</label>
+                  <input class="form-control" type="text" value="${c[`stat${num}_value`] || ''}" onchange="updateField(${idx}, 'stat${num}_value', this.value)" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Label</label>
+                  <input class="form-control" type="text" value="${c[`stat${num}_label`] || ''}" onchange="updateField(${idx}, 'stat${num}_label', this.value)" />
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      case 'why-choose-us':
+        return `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin-bottom:var(--space-4)">
+            <div class="form-group">
+              <label class="form-label">Section Tag Label</label>
+              <input class="form-control" type="text" value="${c.label || ''}" onchange="updateField(${idx}, 'label', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Section Main Title</label>
+              <input class="form-control" type="text" value="${c.title || ''}" onchange="updateField(${idx}, 'title', this.value)" />
+            </div>
+          </div>
+          <h5 style="margin-bottom:var(--space-3); color:var(--primary)">Advantage Cards Editor</h5>
+          <div class="card-list-editor">
+            ${(c.cards || []).map((card, cardIdx) => `
+              <div class="card-list-item">
+                <div>
+                  <label class="form-label" style="font-size:0.75rem">Emoji Icon</label>
+                  <input class="form-control" type="text" value="${card.icon || ''}" onchange="updateNestedCard(${idx}, ${cardIdx}, 'icon', this.value)" style="text-align:center" />
+                </div>
+                <div>
+                  <label class="form-label" style="font-size:0.75rem">Title</label>
+                  <input class="form-control" type="text" value="${card.title || ''}" onchange="updateNestedCard(${idx}, ${cardIdx}, 'title', this.value)" />
+                </div>
+                <div>
+                  <label class="form-label" style="font-size:0.75rem">Description</label>
+                  <input class="form-control" type="text" value="${card.desc || ''}" onchange="updateNestedCard(${idx}, ${cardIdx}, 'desc', this.value)" />
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      case 'policies':
+        return `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin-bottom:var(--space-4)">
+            <div class="form-group">
+              <label class="form-label">Section Tag Label</label>
+              <input class="form-control" type="text" value="${c.label || ''}" onchange="updateField(${idx}, 'label', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Section Main Title</label>
+              <input class="form-control" type="text" value="${c.title || ''}" onchange="updateField(${idx}, 'title', this.value)" />
+            </div>
+          </div>
+          <h5 style="margin-bottom:var(--space-3); color:var(--primary)">Policies Cards Editor</h5>
+          <div class="card-list-editor">
+            ${(c.cards || []).map((card, cardIdx) => `
+              <div style="display:grid; grid-template-columns:1fr 2fr; gap:var(--space-4); padding:var(--space-4); border-bottom:1px solid var(--border)">
+                <div>
+                  <label class="form-label">Card Header Title</label>
+                  <input class="form-control" type="text" value="${card.title || ''}" onchange="updateNestedCard(${idx}, ${cardIdx}, 'title', this.value)" />
+                </div>
+                <div>
+                  <label class="form-label">Policy Bullet Points (One per line)</label>
+                  <textarea class="form-control" rows="3" onchange="updateNestedCardPoints(${idx}, ${cardIdx}, this.value)" style="resize:vertical">${(card.points || []).join('\n')}</textarea>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      case 'rooms':
+      case 'page-hero':
+      case 'cta':
+        return `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin-bottom:var(--space-4)">
+            ${c.label !== undefined ? `
+              <div class="form-group">
+                <label class="form-label">Section Tag Label</label>
+                <input class="form-control" type="text" value="${c.label || ''}" onchange="updateField(${idx}, 'label', this.value)" />
+              </div>
+            ` : ''}
+            <div class="form-group" style="grid-column: ${c.label === undefined ? 'span 2' : 'span 1'}">
+              <label class="form-label">Section Title</label>
+              <input class="form-control" type="text" value="${c.title || ''}" onchange="updateField(${idx}, 'title', this.value)" />
+            </div>
+          </div>
+          ${c.subtitle !== undefined ? `
+            <div class="form-group" style="margin-bottom:var(--space-4)">
+              <label class="form-label">Section Subtitle / Description</label>
+              <textarea class="form-control" rows="3" onchange="updateField(${idx}, 'subtitle', this.value)" style="resize:vertical">${c.subtitle || ''}</textarea>
+            </div>
+          ` : ''}
+          ${sec.id === 'cta' ? `
+            <div class="form-group">
+              <label class="form-label">CTA Button Label</label>
+              <input class="form-control" type="text" value="${c.btn_label || ''}" onchange="updateField(${idx}, 'btn_label', this.value)" />
+            </div>
+          ` : ''}
+        `;
+      case 'contact-strip':
+        return `
+          <div class="form-group" style="margin-bottom:var(--space-4)">
+            <label class="form-label">Banner Title</label>
+            <input class="form-control" type="text" value="${c.title || ''}" onchange="updateField(${idx}, 'title', this.value)" />
+          </div>
+          <div class="form-group" style="margin-bottom:var(--space-4)">
+            <label class="form-label">Banner Description Text</label>
+            <textarea class="form-control" rows="3" onchange="updateField(${idx}, 'desc', this.value)" style="resize:vertical">${c.desc || ''}</textarea>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4)">
+            <div class="form-group">
+              <label class="form-label">Primary Button Label</label>
+              <input class="form-control" type="text" value="${c.btn1_label || ''}" onchange="updateField(${idx}, 'btn1_label', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Secondary Button Label</label>
+              <input class="form-control" type="text" value="${c.btn2_label || ''}" onchange="updateField(${idx}, 'btn2_label', this.value)" />
+            </div>
+          </div>
+        `;
+      case 'gallery':
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4)">
+            <h5 style="margin:0; color:var(--primary)">Photo Gallery Items</h5>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addPhotoToGallery()">+ Add Photo</button>
+          </div>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:var(--space-4)">
+            Add, update, and remove photos displayed in the public gallery. Emojis and gradients are used as fallbacks if no Image URL is supplied.
+          </p>
+
+          <div class="card-list-editor" style="max-height: 400px; overflow-y: auto;">
+            ${(galleryItems || []).length === 0 ? `
+              <div style="text-align:center; padding:2rem; color:var(--text-muted)">No photos in gallery. Click "+ Add Photo" above.</div>
+            ` : (galleryItems || []).map((item, itemIdx) => `
+              <div style="border-bottom:1px solid var(--border); padding:var(--space-4) 0; display:grid; grid-template-columns: 50px 1.5fr 2fr 1fr 100px 40px; gap:10px; align-items:center;">
+                <div style="width:40px; height:40px; border-radius:4px; display:flex; align-items:center; justify-content:center; background:${item.grad || '#003366'}; color:white; font-size:1.5rem; overflow:hidden">
+                  ${item.img ? `<img src="${item.img}" style="width:100%; height:100%; object-fit:cover; border-radius:4px;" />` : (item.emoji || '📷')}
+                </div>
+                <div>
+                  <label class="form-label" style="font-size:0.72rem">Label / Title</label>
+                  <input class="form-control" type="text" value="${item.label || ''}" onchange="updateGalleryItem(${itemIdx}, 'label', this.value)" required />
+                </div>
+                <div>
+                  <label class="form-label" style="font-size:0.72rem">Image URL (Optional)</label>
+                  <input class="form-control" type="text" value="${item.img || ''}" placeholder="e.g. /images/campus.jpg" onchange="updateGalleryItem(${itemIdx}, 'img', this.value)" />
+                </div>
+                <div>
+                  <label class="form-label" style="font-size:0.72rem">Category</label>
+                  <select class="form-control" onchange="updateGalleryItem(${itemIdx}, 'cat', this.value)">
+                    <option value="rooms" ${item.cat === 'rooms' ? 'selected' : ''}>Rooms</option>
+                    <option value="campus" ${item.cat === 'campus' ? 'selected' : ''}>Campus</option>
+                    <option value="facilities" ${item.cat === 'facilities' ? 'selected' : ''}>Facilities</option>
+                  </select>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:4px;">
+                  <div>
+                    <label class="form-label" style="font-size:0.7rem">Emoji</label>
+                    <input class="form-control" type="text" value="${item.emoji || '📷'}" onchange="updateGalleryItem(${itemIdx}, 'emoji', this.value)" style="text-align:center" />
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size:0.7rem">Height</label>
+                    <input class="form-control" type="number" value="${item.h || 260}" onchange="updateGalleryItem(${itemIdx}, 'h', parseInt(this.value))" />
+                  </div>
+                </div>
+                <div style="justify-self:end">
+                  <button type="button" class="btn btn-ghost btn-sm" style="color:var(--error); font-size:1.1rem; padding:4px 8px;" onclick="deletePhotoFromGallery(${itemIdx})" title="Delete Photo">✕</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      case 'contact-layout':
+        return `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin-bottom:var(--space-4)">
+            <div class="form-group">
+              <label class="form-label">Get In Touch Card Title</label>
+              <input class="form-control" type="text" value="${c.title || 'Get in Touch'}" onchange="updateField(${idx}, 'title', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Office Hours Card Title</label>
+              <input class="form-control" type="text" value="${c.hours_title || 'Office Hours'}" onchange="updateField(${idx}, 'hours_title', this.value)" />
+            </div>
+          </div>
+
+          <div style="display:flex; gap:var(--space-4); margin-bottom:var(--space-4)">
+            <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:600; cursor:pointer">
+              <input type="checkbox" ${c.show_hours !== false ? 'checked' : ''} onchange="updateField(${idx}, 'show_hours', this.checked)" />
+              Display Office Hours on contact card
+            </label>
+          </div>
+
+          <h5 style="margin-bottom:var(--space-3); color:var(--primary)">Office Hours Timings</h5>
+          <div class="card-list-editor" style="margin-bottom:var(--space-6)">
+            ${(c.hours || []).map((h, hoursIdx) => `
+              <div class="card-list-item" style="grid-template-columns: 2.5fr 2.5fr 1fr; gap:10px; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:10px;">
+                <div>
+                  <label class="form-label" style="font-size:0.75rem">Days (e.g. Monday - Friday)</label>
+                  <input class="form-control" type="text" value="${h.days || ''}" onchange="updateNestedHours(${idx}, ${hoursIdx}, 'days', this.value)" />
+                </div>
+                <div>
+                  <label class="form-label" style="font-size:0.75rem">Hours (e.g. 9:00 AM - 5:00 PM)</label>
+                  <input class="form-control" type="text" value="${h.hours || ''}" onchange="updateNestedHours(${idx}, ${hoursIdx}, 'hours', this.value)" />
+                </div>
+                <div style="align-self:end; padding-bottom:6px;">
+                  <label style="font-size:0.8rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px">
+                    <input type="checkbox" ${h.closed ? 'checked' : ''} onchange="updateNestedHours(${idx}, ${hoursIdx}, 'closed', this.checked)" />
+                    Closed
+                  </label>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <h5 style="margin-bottom:var(--space-3); color:var(--primary)">Get in Touch Details (Global Contact Info)</h5>
+          <div style="border:1px solid var(--border); padding:var(--space-4); border-radius:var(--radius-md); background:var(--gray-50); display:flex; flex-direction:column; gap:var(--space-4);">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4)">
+              <div class="form-group">
+                <label class="form-label">Contact Email</label>
+                <input class="form-control" type="email" value="${settings.contact_email || ''}" onchange="updateGlobalSetting('contact_email', this.value)" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Contact Phone</label>
+                <input class="form-control" type="text" value="${settings.contact_phone || ''}" onchange="updateGlobalSetting('contact_phone', this.value)" />
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4)">
+              <div class="form-group">
+                <label class="form-label">Website URL</label>
+                <input class="form-control" type="text" value="${settings.contact_website || 'https://www.ksom.res.in'}" onchange="updateGlobalSetting('contact_website', this.value)" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Physical Address</label>
+                <textarea class="form-control" rows="2" onchange="updateGlobalSetting('contact_address', this.value)" style="resize:vertical">${settings.contact_address || ''}</textarea>
+              </div>
+            </div>
+          </div>
+        `;
+      case 'map':
+        return `
+          <div class="form-group">
+            <label class="form-label">Section Title</label>
+            <input class="form-control" type="text" value="${c.title || ''}" onchange="updateField(${idx}, 'title', this.value)" />
+          </div>
+        `;
+      default:
+        return `<p style="color:var(--text-muted)">This section has no editable text parameters.</p>`;
+    }
+  }
+
+  // Nested changes update handlers
+  window.updateField = (secIdx, field, value) => {
+    if (!pageSections[secIdx].content) pageSections[secIdx].content = {};
+    pageSections[secIdx].content[field] = value;
+  };
+
+  window.updateSectionTitle = (secIdx, value) => {
+    pageSections[secIdx].title = value;
+  };
+
+  window.updateNestedCard = (secIdx, cardIdx, field, value) => {
+    if (pageSections[secIdx].content && pageSections[secIdx].content.cards) {
+      pageSections[secIdx].content.cards[cardIdx][field] = value;
+    }
+  };
+
+  window.updateNestedCardPoints = (secIdx, cardIdx, value) => {
+    if (pageSections[secIdx].content && pageSections[secIdx].content.cards) {
+      pageSections[secIdx].content.cards[cardIdx].points = value.split('\n').map(p => p.trim()).filter(Boolean);
+    }
+  };
+
+  window.updateNestedHours = (secIdx, hoursIdx, field, value) => {
+    if (pageSections[secIdx].content && pageSections[secIdx].content.hours) {
+      pageSections[secIdx].content.hours[hoursIdx][field] = value;
+    }
+  };
+
+  window.updateGlobalSetting = (key, value) => {
+    settings[key] = value;
+  };
+
+  window.updateGalleryItem = (itemIdx, field, value) => {
+    if (galleryItems[itemIdx]) {
+      galleryItems[itemIdx][field] = value;
+      if (field === 'img' || field === 'emoji') {
+        renderSectionsList();
+      }
+    }
+  };
+
+  window.deletePhotoFromGallery = (itemIdx) => {
+    galleryItems.splice(itemIdx, 1);
+    renderSectionsList();
+  };
+
+  window.addPhotoToGallery = () => {
+    const gradients = [
+      'linear-gradient(135deg,#003366,#0055a5)',
+      'linear-gradient(135deg,#14532d,#16a34a)',
+      'linear-gradient(135deg,#004080,#0070cc)',
+      'linear-gradient(135deg,#1e1b4b,#4338ca)',
+      'linear-gradient(135deg,#7c2d12,#ea580c)'
+    ];
+    galleryItems.push({
+      cat: 'rooms',
+      label: 'New Photo',
+      img: '',
+      emoji: '📸',
+      h: 260,
+      grad: gradients[galleryItems.length % gradients.length]
+    });
+    renderSectionsList();
+  };
+
+  // Save all page configuration
+  document.getElementById('save-cms-btn').addEventListener('click', async () => {
+    const saveBtn = document.getElementById('save-cms-btn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving layout...';
+
+    try {
+      // Clear expansion properties so they don't persist in database payload
+      const cleanedSections = pageSections.map(sec => {
+        const { expanded, ...rest } = sec;
+        return rest;
+      });
+
+      const key = `sections_${activePage}`;
+      const payload = {
+        [key]: JSON.stringify(cleanedSections),
+        ...(activePage === 'contact' ? {
+          contact_email: settings.contact_email,
+          contact_phone: settings.contact_phone,
+          contact_address: settings.contact_address,
+          contact_website: settings.contact_website
+        } : {}),
+        ...(activePage === 'gallery' ? {
+          gallery_items: JSON.stringify(galleryItems)
+        } : {})
+      };
+
+      await api.updateSettings(payload);
+      settings[key] = JSON.stringify(cleanedSections);
+      if (activePage === 'gallery') {
+        settings.gallery_items = JSON.stringify(galleryItems);
+      }
+      
+      toast('Page configurations saved successfully!', 'success');
+      loadPageSections();
+    } catch (e) {
+      toast(e.message || 'Failed to save page settings.', 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save All Page Sections';
+    }
+  });
+
+  // Reset to default layout
+  document.getElementById('reset-cms-btn').addEventListener('click', () => {
+    confirm('Are you sure you want to reset this page to the default original layout? Any custom sections will be removed.', async () => {
+      const resetBtn = document.getElementById('reset-cms-btn');
+      resetBtn.disabled = true;
+      try {
+        const key = `sections_${activePage}`;
+        
+        const DEFAULTS = {
+          index: [
+            { id: 'hero', type: 'hero', title: 'Hero Section', visible: true, content: { headline: 'A Home Away from<br />\n<span>Academia</span>', subtitle: 'The KSoM Guesthouse offers serene, well-appointed rooms on the Kerala School of Mathematics campus — the ideal base for visiting scholars, researchers, and faculty attending programmes at KSoM.', btn1_label: '🔑 Login to Book Rooms', btn2_label: 'View Room Status →' } },
+            { id: 'stats', type: 'stats', title: 'Stats Banner', visible: true, content: { stat1_value: '5', stat1_label: 'Comfortable Rooms', stat2_value: '₹800', stat2_label: 'Starting Per Night', stat3_value: '24/7', stat3_label: 'Reception Support', stat4_value: 'Wi-Fi', stat4_label: 'High-Speed Campus Network' } },
+            { id: 'rooms', type: 'rooms', title: 'Featured Rooms Header', visible: true, content: { label: 'Our Rooms', title: 'Accommodation for Every Need', subtitle: 'From private single rooms to spacious suites, all rooms are designed for scholarly comfort with modern amenities.' } },
+            { id: 'why-choose-us', type: 'why-choose-us', title: 'Why Choose Us Section', visible: true, content: { label: 'Why Stay with Us', title: 'The KSoM Guesthouse Advantage', cards: [ { icon: '🏛️', title: 'On-Campus Location', desc: 'Walk to lecture halls, libraries, and seminar rooms. No commute, just scholarship.' }, { icon: '📶', title: 'High-Speed Internet', desc: 'Access the KSoM campus network for uninterrupted research and remote collaboration.' }, { icon: '🌿', title: 'Serene Campus', desc: 'Nestled in Kerala\'s lush greenery — a peaceful environment perfect for deep focus.' }, { icon: '💰', title: 'Affordable Rates', desc: 'Government-institute pricing — excellent value without compromising on comfort.' }, { icon: '🔐', title: 'Safe & Secure', desc: '24/7 campus security, secure access, and dedicated reception support for all guests.' }, { icon: '📋', title: 'Easy Booking', desc: 'Book online in minutes and receive your confirmation instantly — no paperwork.' } ] } },
+            { id: 'contact-strip', type: 'contact-strip', title: 'Planning to Stay Banner', visible: true, content: { title: 'Planning to Stay at KSoM?', desc: 'Direct bookings are not permitted. Please contact your KSoM sponsor, coordinator, or supervisor to initiate a booking request.', btn1_label: '🔑 Login to Book Rooms', btn2_label: 'Contact Us' } }
+          ],
+          rooms: [
+            { id: 'page-hero', type: 'page-hero', title: 'Page Hero Header', visible: true, content: { label: 'Our Accommodation', title: 'Rooms & Tariff', subtitle: 'All rooms include AC, Wi-Fi, hot water, and daily housekeeping. Choose the option that best suits your stay.' } },
+            { id: 'rooms-grid', type: 'rooms-grid', title: 'Rooms List Grid', visible: true, content: {} },
+            { id: 'policies', type: 'policies', title: 'Stay Policies Section', visible: true, content: { label: 'Policies', title: 'Booking & Stay Policies', cards: [ { title: '⏰ Check-in / Check-out', points: ['Check-in: 12:00 PM (noon)', 'Check-out: 11:00 AM', 'Early check-in subject to availability'] }, { title: '💳 Payment', points: ['Payment at check-out', 'Cash, UPI, bank transfer accepted', 'Invoice provided on request'] }, { title: '📋 Guest Eligibility', points: ['KSoM programme participants', 'Invited faculty & researchers', 'External guests: prior approval required'] } ] } }
+          ],
+          availability: [
+            { id: 'page-hero', type: 'page-hero', title: 'Page Hero Header', visible: true, content: { label: 'Plan Your Visit', title: 'Availability Calendar', subtitle: 'See which rooms are available for your preferred dates. Green = available, red = booked.' } },
+            { id: 'calendar', type: 'calendar', title: 'Interactive Availability Grid', visible: true, content: {} }
+          ],
+          gallery: [
+            { id: 'page-hero', type: 'page-hero', title: 'Page Hero Header', visible: true, content: { label: 'Visual Tour', title: 'Photo Gallery', subtitle: 'A glimpse of our rooms, campus, and facilities at the KSoM Guesthouse.' } },
+            { id: 'gallery', type: 'gallery', title: 'Gallery Masonry Grid', visible: true, content: {} },
+            { id: 'cta', type: 'cta', title: 'Like What You See Banner', visible: true, content: { title: 'Like What You See?', subtitle: 'Book your stay at the KSoM Guesthouse and experience it in person.', btn_label: 'Book a Room →' } }
+          ],
+          contact: [
+            { id: 'page-hero', type: 'page-hero', title: 'Page Hero Header', visible: true, content: { label: 'Reach Us', title: 'Contact Us', subtitle: 'We\'re happy to assist with reservations, inquiries, or any other questions about your stay.' } },
+            { id: 'contact-layout', type: 'contact-layout', title: 'Contact Form & Details', visible: true, content: { title: 'Get in Touch', hours_title: 'Office Hours', hours: [ { days: 'Monday – Friday', hours: '9:00 AM – 5:00 PM', closed: false }, { days: 'Saturday', hours: '9:00 AM – 1:00 PM', closed: false }, { days: 'Sunday / Holidays', hours: 'Closed', closed: true } ], show_hours: true } },
+            { id: 'map', type: 'map', title: 'Google Map Section', visible: true, content: { title: 'How to Reach Us' } }
+          ]
+        };
+
+        const defaultData = DEFAULTS[activePage];
+        if (defaultData) {
+          const payload = { [key]: JSON.stringify(defaultData) };
+          if (activePage === 'gallery') {
+            const defaultGallery = [
+              { cat: 'rooms',      label: 'Single Room — Room 101', emoji: '🛏️', h: 260, grad: 'linear-gradient(135deg,#003366,#0055a5)' },
+              { cat: 'campus',     label: 'Campus Garden',          emoji: '🌿', h: 340, grad: 'linear-gradient(135deg,#14532d,#16a34a)' },
+              { cat: 'rooms',      label: 'Double Room — Room 201', emoji: '🛏️🛏️', h: 300, grad: 'linear-gradient(135deg,#004080,#0070cc)' },
+              { cat: 'facilities', label: 'Reception Area',         emoji: '🏛️', h: 220, grad: 'linear-gradient(135deg,#1e1b4b,#4338ca)' },
+              { cat: 'rooms',      label: 'Suite 301 — Living Area',emoji: '🏨',  h: 280, grad: 'linear-gradient(135deg,#7c2d12,#ea580c)' },
+              { cat: 'campus',     label: 'KSoM Main Building',     emoji: '🏫',  h: 200, grad: 'linear-gradient(135deg,#1e3a5f,#003366)' },
+              { cat: 'facilities', label: 'Study Lounge',           emoji: '📚',  h: 320, grad: 'linear-gradient(135deg,#4a044e,#a21caf)' },
+              { cat: 'rooms',      label: 'Room Bathroom',          emoji: '🚿',  h: 250, grad: 'linear-gradient(135deg,#0f172a,#1e40af)' },
+              { cat: 'campus',     label: 'Evening Campus Walk',    emoji: '🌅',  h: 260, grad: 'linear-gradient(135deg,#92400e,#f59e0b)' },
+              { cat: 'facilities', label: 'Dining Area',            emoji: '🍽️',  h: 230, grad: 'linear-gradient(135deg,#064e3b,#10b981)' },
+              { cat: 'rooms',      label: 'Suite 301 — Bedroom',    emoji: '🛌',  h: 300, grad: 'linear-gradient(135deg,#1c1917,#78350f)' },
+              { cat: 'campus',     label: 'Courtyard',              emoji: '☀️',  h: 350, grad: 'linear-gradient(135deg,#0c4a6e,#0284c7)' }
+            ];
+            payload.gallery_items = JSON.stringify(defaultGallery);
+            galleryItems = defaultGallery;
+          }
+          await api.updateSettings(payload);
+          settings[key] = JSON.stringify(defaultData);
+          if (payload.gallery_items) settings.gallery_items = payload.gallery_items;
+          toast('Page layout reset to default successfully!', 'success');
+          loadPageSections();
+        }
+      } catch (err) {
+        toast(err.message || 'Failed to reset layout.', 'error');
+      } finally {
+        resetBtn.disabled = false;
+      }
+    });
+  });
+
+  loadSettings();
+</script>
+</body>
+</html>

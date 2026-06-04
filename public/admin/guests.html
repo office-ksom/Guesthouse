@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Guests — KSoM Guesthouse Admin</title>
+  <meta name="robots" content="noindex, nofollow"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>"/>
+  <link rel="stylesheet" href="/css/main.css"/>
+  <link rel="stylesheet" href="/css/admin.css"/>
+</head>
+<body>
+<div class="admin-layout" id="app"></div>
+<script type="module">
+import { initAdminLayout, api } from '/js/auth.js';
+import { renderAdminShell, renderAdminTopbar } from '/js/admin/shell.js';
+import { formatDate, formatDatetime, statusBadge, formatCurrency, toast } from '/js/ui.js';
+
+document.getElementById('app').innerHTML = `
+  ${renderAdminShell()}
+  <div class="admin-main">
+    ${renderAdminTopbar('Guest Directory', 'All registered guests')}
+    <div class="admin-content">
+      <div class="data-table-wrapper">
+        <div class="data-table-header">
+          <span class="data-table-header__title">👥 Guests</span>
+          <div class="data-table-toolbar">
+            <div class="search-input">
+              <span>🔍</span>
+              <input type="text" id="search-input" placeholder="Search by name, phone, email…"/>
+            </div>
+          </div>
+        </div>
+        <div id="guests-wrap">
+          <div style="padding:3rem;text-align:center"><div class="spinner" style="margin:0 auto 1rem"></div><p>Loading guests…</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guest Detail Modal -->
+  <div class="modal-overlay" id="guest-modal" style="display:none">
+    <div class="modal modal-lg">
+      <div class="modal__header">
+        <h3 class="modal__title" id="gm-title">Guest Profile</h3>
+        <span class="modal__close" id="gm-close">✕</span>
+      </div>
+      <div class="modal__body" id="gm-body">Loading…</div>
+      <div class="modal__footer">
+        <button class="btn btn-ghost btn-sm" id="gm-cancel">Close</button>
+      </div>
+    </div>
+  </div>
+`;
+
+initAdminLayout('Guest Directory', 'guests');
+
+let allGuests = [];
+let searchTerm = '';
+
+async function loadGuests(search = '') {
+  const wrap = document.getElementById('guests-wrap');
+  try {
+    const data = await api.getGuests(search ? { search } : {});
+    allGuests = data.guests || [];
+    renderTable(allGuests);
+  } catch(e) {
+    wrap.innerHTML = `<div style="padding:2rem;color:var(--error)">Failed to load guests.</div>`;
+  }
+}
+
+function renderTable(guests) {
+  const wrap = document.getElementById('guests-wrap');
+  if (!guests.length) {
+    wrap.innerHTML = `<div style="padding:3rem;text-align:center;color:var(--text-muted)">No guests found.</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Designation</th><th>Email</th><th>Phone</th><th>Organization</th><th>ID Type</th><th>Registered</th><th></th></tr></thead>
+        <tbody>
+          ${guests.map(g => `
+            <tr>
+              <td style="font-weight:700">${g.name}</td>
+              <td style="font-size:0.875rem">${g.designation||'—'}</td>
+              <td style="font-size:0.875rem">${g.email||'—'}</td>
+              <td style="font-size:0.875rem">${g.phone||'—'}</td>
+              <td style="font-size:0.875rem">${g.organization||'—'}</td>
+              <td style="font-size:0.8rem;text-transform:capitalize">${g.id_type||'—'}</td>
+              <td style="font-size:0.8rem;color:var(--text-muted)">${formatDate(g.created_at)}</td>
+              <td><button class="icon-btn icon-btn-view" onclick="viewGuest(${g.id})" title="View Profile">👁</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+window.viewGuest = async (id) => {
+  const modal = document.getElementById('guest-modal');
+  const body  = document.getElementById('gm-body');
+  modal.style.display = 'flex';
+  body.innerHTML = `<div style="text-align:center;padding:2rem"><div class="spinner" style="margin:0 auto"></div></div>`;
+
+  try {
+    const { guest: g, bookings } = await api.getGuest(id);
+    document.getElementById('gm-title').textContent = `👤 ${g.name}`;
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin-bottom:var(--space-6);">
+        <div>
+          <h5 style="color:var(--primary);margin-bottom:var(--space-3)">Contact Information</h5>
+          ${[['Designation',g.designation||'—'],['Email',g.email||'—'],['Phone',g.phone||'—'],['Organization',g.organization||'—'],['Address',g.address||'—']].map(([k,v])=>`<div style="display:flex;gap:1rem;margin-bottom:0.5rem;font-size:0.875rem"><span style="color:var(--text-muted);width:100px;flex-shrink:0">${k}</span><span>${v}</span></div>`).join('')}
+        </div>
+        <div>
+          <h5 style="color:var(--primary);margin-bottom:var(--space-3)">Identity</h5>
+          ${[['ID Type',g.id_type||'—'],['ID Number',g.id_number||'—'],['Registered',formatDatetime(g.created_at)]].map(([k,v])=>`<div style="display:flex;gap:1rem;margin-bottom:0.5rem;font-size:0.875rem"><span style="color:var(--text-muted);width:100px;flex-shrink:0">${k}</span><span style="text-transform:capitalize">${v}</span></div>`).join('')}
+        </div>
+      </div>
+      <h5 style="color:var(--primary);margin-bottom:var(--space-3)">Booking History (${bookings?.length||0})</h5>
+      ${bookings?.length ? `
+        <table class="data-table" style="font-size:0.85rem;">
+          <thead><tr><th>Ref</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Amount</th></tr></thead>
+          <tbody>${bookings.map(b=>`<tr><td><code style="font-size:0.75rem">${b.booking_ref}</code></td><td>${b.room_name}</td><td>${formatDate(b.check_in_date)}</td><td>${formatDate(b.check_out_date)}</td><td>${statusBadge(b.status)}</td><td>${formatCurrency(b.total_amount||0)}</td></tr>`).join('')}</tbody>
+        </table>
+      ` : `<p style="color:var(--text-muted);font-size:0.875rem">No bookings yet.</p>`}
+    `;
+  } catch(e) {
+    body.innerHTML = `<p style="color:var(--error)">Failed to load guest profile.</p>`;
+  }
+};
+
+let debounce;
+document.getElementById('search-input').addEventListener('input', e => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => { searchTerm = e.target.value; loadGuests(searchTerm); }, 400);
+});
+document.getElementById('gm-close').addEventListener('click', () => document.getElementById('guest-modal').style.display='none');
+document.getElementById('gm-cancel').addEventListener('click', () => document.getElementById('guest-modal').style.display='none');
+document.getElementById('guest-modal').addEventListener('click', e => { if(e.target===document.getElementById('guest-modal')) document.getElementById('guest-modal').style.display='none'; });
+
+loadGuests();
+</script>
+</body>
+</html>

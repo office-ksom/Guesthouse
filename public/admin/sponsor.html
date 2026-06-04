@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sponsor Dashboard — KSoM Guesthouse</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+  <style>
+    .sponsor-container { max-width: 1200px; margin: 0 auto; padding: var(--space-6); }
+    .sponsor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-8); background: white; padding: var(--space-5) var(--space-8); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+    .sponsor-title { font-family: var(--font-heading); font-size: 1.25rem; color: var(--primary); font-weight: 700; margin: 0; }
+    .sponsor-meta { display: flex; align-items: center; gap: var(--space-4); }
+    .sponsor-email { font-size: 0.85rem; color: var(--text-muted); background: var(--bg); padding: 4px 10px; border-radius: var(--radius-md); border: 1px solid var(--border); }
+    .sponsor-grid { display: grid; grid-template-columns: 420px 1fr; gap: var(--space-6); }
+    @media (max-width: 900px) { .sponsor-grid { grid-template-columns: 1fr; } }
+    .form-group-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+    .status-badge { display: inline-block; padding: 2px 8px; font-size: 0.72rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; }
+  </style>
+</head>
+<body style="background:var(--bg);">
+
+  <div class="sponsor-container">
+    
+    <!-- Sponsor Header -->
+    <header class="sponsor-header">
+      <div class="navbar__brand" style="pointer-events:none;">
+        <div class="navbar__logo">KG</div>
+        <div>
+          <h1 class="sponsor-title">KSoM Guesthouse Sponsor Portal</h1>
+          <div style="font-size:0.75rem;color:var(--text-muted)">Welcome, <span id="sponsor-name" style="font-weight:600;color:var(--text-primary)">Sponsor</span></div>
+        </div>
+      </div>
+      <div class="sponsor-meta">
+        <span class="sponsor-email" id="sponsor-email">...</span>
+        <a href="/admin/dashboard.html" class="btn btn-outline btn-sm" id="dashboard-btn" style="display:none; text-decoration:none;">Dashboard</a>
+        <button class="btn btn-outline btn-sm" id="logout-btn">Logout</button>
+      </div>
+    </header>
+
+    <div class="sponsor-grid">
+      
+      <!-- New Request Form -->
+      <div>
+        <div class="card" style="padding:var(--space-6); background:white;">
+          <h3 style="font-family:var(--font-heading); margin-bottom:var(--space-4); font-size:1.1rem; color:var(--text-primary)">
+            Request Guest Booking
+          </h3>
+
+          <div class="error-box" id="form-error" style="display:none; background:#fff1f2; color:#be123c; border:1px solid #fecdd3; border-radius:var(--radius-md); padding:var(--space-3); font-size:0.875rem; margin-bottom:var(--space-4);"></div>
+          <div class="success-box" id="form-success" style="display:none; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; border-radius:var(--radius-md); padding:var(--space-3); font-size:0.875rem; margin-bottom:var(--space-4);"></div>
+
+          <form id="booking-request-form" novalidate>
+            
+            <h4 style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:var(--space-3); border-bottom:1px solid var(--border); padding-bottom:4px;">Guest Details</h4>
+            
+            <div id="guests-container"></div>
+            <div style="margin-top:-8px; margin-bottom:var(--space-4); text-align:right;">
+              <button type="button" class="btn btn-outline btn-xs" id="add-guest-btn" style="color:var(--primary); border-color:var(--primary)">+ Add Another Guest</button>
+            </div>
+
+            <h4 style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); margin-top:var(--space-5); margin-bottom:var(--space-3); border-bottom:1px solid var(--border); padding-bottom:4px;">Stay Details</h4>
+
+            <div class="form-group-row" style="margin-bottom:var(--space-3);">
+              <div class="form-group">
+                <label class="form-label required" for="check-in">Check-in Date</label>
+                <input class="form-control" type="date" id="check-in" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label required" for="check-out">Check-out Date</label>
+                <input class="form-control" type="date" id="check-out" required />
+              </div>
+            </div>
+
+            <div class="form-group-row" style="margin-bottom:var(--space-3);">
+              <div class="form-group">
+                <label class="form-label required" for="room-type">Room Type</label>
+                <select class="form-control" id="room-type">
+                  <option value="single">Single Occupancy</option>
+                  <option value="double">Double Occupancy</option>
+                  <option value="suite">Suite</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label required" for="ac-preference">AC / Non-AC</label>
+                <select class="form-control" id="ac-preference">
+                  <option value="1">AC Room</option>
+                  <option value="0">Non-AC Room</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group-row" style="margin-bottom:var(--space-3); align-items:center;">
+              <div class="form-group">
+                <label class="form-label" for="num-guests">Num of Guests</label>
+                <input class="form-control" type="number" id="num-guests" value="1" min="1" max="10" />
+              </div>
+              <div class="form-group" style="padding-top:1.25rem;">
+                <label style="font-size:0.85rem; color:var(--text-primary); cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-weight:600;">
+                  <input type="checkbox" id="waive-rent" checked /> Waive Room Rent
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:var(--space-3);">
+              <label class="form-label" for="purpose">Purpose of Visit</label>
+              <input class="form-control" type="text" id="purpose" placeholder="e.g. Conference Keynote Speaker" />
+            </div>
+
+            <div class="form-group" style="margin-bottom:var(--space-5);">
+              <label class="form-label" for="requests">Special Requests / Notes</label>
+              <textarea class="form-control" id="requests" rows="2" placeholder="Any specific requirements..."></textarea>
+            </div>
+
+            <button class="btn btn-primary btn-full btn-lg" type="submit" id="submit-btn">
+              Submit Request
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Requests History -->
+      <div>
+        <div class="card" style="padding:var(--space-6); background:white; min-height:550px;">
+          <h3 style="font-family:var(--font-heading); margin-bottom:var(--space-4); font-size:1.1rem; color:var(--text-primary)">
+            My Booking Requests
+          </h3>
+
+          <div style="overflow-x:auto;">
+            <table class="table" style="width:100%;">
+              <thead>
+                <tr>
+                  <th>Ref</th>
+                  <th>Guest</th>
+                  <th>Stay Dates</th>
+                  <th>Request Details</th>
+                  <th>Rent</th>
+                  <th>Status</th>
+                  <th>Room Allotted</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="requests-tbody">
+                <tr>
+                  <td colspan="8" style="text-align:center; padding:3rem 0; color:var(--text-secondary)">
+                    Loading requests...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { api, auth } from '/js/api.js';
+
+    // Guard: Redirect if not logged in or not authorized
+    const allowedRoles = ['admin', 'receptionist', 'sponsor'];
+    const user = auth.getUser();
+    if (!auth.isLoggedIn() || !user || !allowedRoles.includes(user.role)) {
+      auth.clearSession();
+      window.location.href = '/admin/login.html';
+      throw new Error('Not authorized');
+    }
+
+    document.getElementById('sponsor-name').textContent = user.name;
+    document.getElementById('sponsor-email').textContent = user.email;
+
+    if (user.role === 'admin' || user.role === 'receptionist') {
+      const dbBtn = document.getElementById('dashboard-btn');
+      if (dbBtn) dbBtn.style.display = 'inline-block';
+    }
+
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      try { await api.logout(); } catch {}
+      auth.clearSession();
+      window.location.href = '/admin/login.html';
+    });
+
+    // Dynamic Guest List Logic
+    const guestsContainer = document.getElementById('guests-container');
+    const addGuestBtn = document.getElementById('add-guest-btn');
+
+    function createGuestCardHtml(index) {
+      const isFirst = index === 1;
+      return `
+        <div class="guest-entry-card" data-index="${index}" style="border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-4); background: #f8fafc; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+            <h5 style="margin: 0; font-size: 0.85rem; color: var(--text-primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Guest #${index}</h5>
+            ${!isFirst ? `<button type="button" class="btn btn-ghost btn-xs remove-guest-btn" style="color: var(--error); padding: 2px 6px; font-size: 0.75rem;">Remove</button>` : ''}
+          </div>
+          
+          <div class="form-group" style="margin-bottom:var(--space-3);">
+            <label class="form-label required">Full Name</label>
+            <input class="form-control guest-name" type="text" placeholder="e.g. Dr. John Doe" required />
+          </div>
+
+          <div class="form-group" style="margin-bottom:var(--space-3);">
+            <label class="form-label">Position / Designation</label>
+            <input class="form-control guest-designation" type="text" placeholder="e.g. Professor / Director" />
+          </div>
+
+          <div class="form-group" style="margin-bottom:var(--space-3);">
+            <label class="form-label">Organization / Institution</label>
+            <input class="form-control guest-org" type="text" placeholder="e.g. IISc Bangalore" />
+          </div>
+
+          <div class="form-group-row" style="margin-bottom:var(--space-3);">
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input class="form-control guest-email" type="email" placeholder="john.doe@example.com" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <input class="form-control guest-phone" type="tel" placeholder="e.g. +919876543210" />
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    let guestCount = 0;
+
+    function addGuestEntry() {
+      guestCount++;
+      const div = document.createElement('div');
+      div.innerHTML = createGuestCardHtml(guestCount);
+      const card = div.firstElementChild;
+      
+      if (guestCount > 1) {
+        card.querySelector('.remove-guest-btn').addEventListener('click', () => {
+          card.remove();
+          reindexGuests();
+        });
+      }
+      
+      guestsContainer.appendChild(card);
+    }
+
+    function reindexGuests() {
+      const cards = guestsContainer.querySelectorAll('.guest-entry-card');
+      guestCount = 0;
+      cards.forEach((card, idx) => {
+        guestCount = idx + 1;
+        card.setAttribute('data-index', guestCount);
+        card.querySelector('h5').innerHTML = `Guest #${guestCount}`;
+        const header = card.querySelector('div');
+        let removeBtn = card.querySelector('.remove-guest-btn');
+        if (guestCount === 1) {
+          if (removeBtn) removeBtn.remove();
+        } else {
+          if (!removeBtn) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-ghost btn-xs remove-guest-btn';
+            btn.style.color = 'var(--error)';
+            btn.style.padding = '2px 6px';
+            btn.style.fontSize = '0.75rem';
+            btn.textContent = 'Remove';
+            btn.addEventListener('click', () => {
+              card.remove();
+              reindexGuests();
+            });
+            header.appendChild(btn);
+          }
+        }
+      });
+    }
+
+    function resetGuestsContainer() {
+      guestsContainer.innerHTML = '';
+      guestCount = 0;
+      addGuestEntry();
+    }
+
+    resetGuestsContainer();
+    addGuestBtn.addEventListener('click', addGuestEntry);
+
+    // Date picker constraints
+    const checkinInput = document.getElementById('check-in');
+    const checkoutInput = document.getElementById('check-out');
+    const today = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+    checkinInput.value = today;
+    checkinInput.min = today;
+    checkoutInput.value = tomorrow;
+    checkoutInput.min = tomorrow;
+
+    checkinInput.addEventListener('change', e => {
+      const next = new Date(new Date(e.target.value).getTime() + 86400000).toISOString().split('T')[0];
+      checkoutInput.min = next;
+      if (checkoutInput.value <= e.target.value) {
+        checkoutInput.value = next;
+      }
+    });
+
+    const tbody = document.getElementById('requests-tbody');
+
+    // Load Requests
+    async function loadRequests() {
+      try {
+        const data = await api.getBookings();
+        const bookings = data.bookings || [];
+
+        if (!bookings.length) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="8" style="text-align:center; padding:3rem 0; color:var(--text-muted)">
+                You have not submitted any booking requests yet.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        const typeLabels = { single: 'Single', double: 'Double', suite: 'Suite' };
+        const statusColors = {
+          pending: 'background-color:#fef3c7;color:#92400e;border:1px solid #fbbf24',
+          confirmed: 'background-color:#d1fae5;color:#065f46;border:1px solid #10b981',
+          checked_in: 'background-color:#dbeafe;color:#1e40af;border:1px solid #60a5fa',
+          checked_out: 'background-color:#f3f4f6;color:#374151;border:1px solid #9ca3af',
+          cancelled: 'background-color:#fee2e2;color:#991b1b;border:1px solid #f87171'
+        };
+
+        tbody.innerHTML = bookings.map(b => {
+          const isCancelable = b.status === 'pending' || b.status === 'confirmed';
+          const acText = b.requested_ac === 1 ? 'AC' : 'Non-AC';
+          const typeText = typeLabels[b.requested_type] || b.requested_type || 'Any';
+          const rentText = b.is_rent_waived === 1 ? '<span style="color:#059669;font-weight:600">Waived</span>' : `<span style="color:var(--text-primary)">Chargeable</span>`;
+
+          return `
+            <tr>
+              <td style="font-weight:700;color:var(--text-primary)">${b.booking_ref}</td>
+              <td>
+                <div style="font-weight:600;color:var(--text-primary)">${b.guest_name}</div>
+                <div style="font-size:0.75rem;color:var(--text-secondary)">
+                  ${b.designation ? b.designation + ' · ' : ''}${b.organization || ''}
+                </div>
+              </td>
+              <td>
+                <div style="font-size:0.85rem;color:var(--text-primary)">${b.check_in_date}</div>
+                <div style="font-size:0.75rem;color:var(--text-secondary)">to ${b.check_out_date}</div>
+              </td>
+              <td style="font-size:0.85rem;">
+                ${typeText} · ${acText}
+              </td>
+              <td>${rentText}</td>
+              <td>
+                <span class="status-badge" style="${statusColors[b.status] || ''}">
+                  ${b.status}
+                </span>
+              </td>
+              <td style="font-weight:600;color:var(--primary)">
+                ${b.room_name || '<span style="color:var(--text-muted);font-weight:400;font-size:0.8rem">Pending allotment</span>'}
+              </td>
+              <td style="text-align:right;">
+                ${isCancelable ? `<button class="btn btn-outline btn-xs btn-danger cancel-btn" data-id="${b.id}">Cancel</button>` : '—'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        // Attach cancel listeners
+        document.querySelectorAll('.cancel-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to cancel this request?')) return;
+            const id = btn.dataset.id;
+            try {
+              await api.delete(`/bookings/${id}`);
+              loadRequests();
+            } catch(e) {
+              alert(e.message || 'Failed to cancel booking.');
+            }
+          });
+        });
+
+      } catch(err) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align:center; padding:3rem 0; color:var(--error)">
+              Failed to load request history: ${err.message}
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // Submit Request Form
+    document.getElementById('booking-request-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('form-error');
+      const successBox = document.getElementById('form-success');
+      const submitBtn = document.getElementById('submit-btn');
+
+      errorBox.style.display = 'none';
+      successBox.style.display = 'none';
+
+      const checkin = checkinInput.value;
+      const checkout = checkoutInput.value;
+      const type = document.getElementById('room-type').value;
+      const acPref = parseInt(document.getElementById('ac-preference').value);
+      const isRentWaived = document.getElementById('waive-rent').checked ? 1 : 0;
+      const numGuests = parseInt(document.getElementById('num-guests').value);
+      const purpose = document.getElementById('purpose').value.trim();
+      const requests = document.getElementById('requests').value.trim();
+
+      if (!checkin || !checkout) {
+        errorBox.textContent = 'Please enter check-in and check-out dates.';
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      const guestCards = guestsContainer.querySelectorAll('.guest-entry-card');
+      const guests = [];
+      let hasError = false;
+
+      guestCards.forEach(card => {
+        const nameVal = card.querySelector('.guest-name').value.trim();
+        const designationVal = card.querySelector('.guest-designation').value.trim();
+        const orgVal = card.querySelector('.guest-org').value.trim();
+        const emailVal = card.querySelector('.guest-email').value.trim();
+        const phoneVal = card.querySelector('.guest-phone').value.trim();
+
+        if (!nameVal) {
+          hasError = true;
+        }
+
+        guests.push({
+          name: nameVal,
+          designation: designationVal || null,
+          organization: orgVal || null,
+          email: emailVal || null,
+          phone: phoneVal || null
+        });
+      });
+
+      if (hasError || guests.length === 0) {
+        errorBox.textContent = 'Please enter guest name for all guest entries.';
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting request...';
+
+      try {
+        const payload = {
+          guests: guests,
+          check_in_date: checkin,
+          check_out_date: checkout,
+          requested_type: type,
+          requested_ac: acPref,
+          is_rent_waived: isRentWaived,
+          num_guests: numGuests,
+          purpose_of_visit: purpose || null,
+          special_requests: requests || null
+        };
+
+        const res = await api.createBooking(payload);
+        const refText = res.group_ref || res.booking_ref;
+        successBox.innerHTML = `<strong>Request Submitted!</strong> Reference: <span style="font-weight:700">${refText}</span>. It is pending admin allotment.`;
+        successBox.style.display = 'block';
+        
+        // Reset form details
+        document.getElementById('booking-request-form').reset();
+        resetGuestsContainer();
+        checkinInput.value = today;
+        checkoutInput.value = tomorrow;
+
+        loadRequests();
+      } catch(err) {
+        errorBox.textContent = err.message || 'Failed to submit request.';
+        errorBox.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Request';
+      }
+    });
+
+    loadRequests();
+  </script>
+</body>
+</html>

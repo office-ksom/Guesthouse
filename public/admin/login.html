@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — KSoM Guesthouse</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="https://accounts.google.com/gsi/client" onload="window.triggerGoogleInit && window.triggerGoogleInit()" async defer></script>
+  <style>
+    body { background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-700) 50%, var(--blue-600) 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .login-card {
+      background: white;
+      border-radius: var(--radius-2xl);
+      padding: var(--space-10);
+      width: 100%;
+      max-width: 440px;
+      margin: var(--space-6);
+      box-shadow: var(--shadow-xl);
+      position: relative;
+      z-index: 1;
+      animation: slideUp 0.4s ease;
+    }
+    .login-logo {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--saffron-500), var(--saffron-700));
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: white;
+      margin: 0 auto var(--space-6);
+      box-shadow: 0 8px 24px rgba(255,153,51,0.4);
+    }
+    .error-box {
+      background: #fff1f2;
+      color: #be123c;
+      border: 1px solid #fecdd3;
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      font-size: 0.875rem;
+      margin-bottom: var(--space-5);
+      display: none;
+    }
+    @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-logo">KG</div>
+    <h1 style="text-align:center;font-size:1.5rem;margin-bottom:var(--space-2);">KSoM Portal Login</h1>
+    <p style="text-align:center;color:var(--text-muted);font-size:0.875rem;margin-bottom:var(--space-6);">Guesthouse Management Portal</p>
+
+    <div class="error-box" id="error-box" role="alert"></div>
+
+    <!-- Sponsor Login (G-Suite) -->
+    <div style="margin-bottom:var(--space-6);">
+      <div id="google-signin-div" style="display:none; justify-content:center; margin-bottom:var(--space-3);"></div>
+      <button class="btn btn-secondary btn-full btn-lg" type="button" id="google-login-btn" style="display:flex;align-items:center;justify-content:center;gap:10px;">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7l2.76 2.13c1.62-1.49 2.58-3.69 2.58-6.46z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.76-2.13c-.76.51-1.74.82-3.2.82-2.46 0-4.55-1.66-5.3-3.89L.94 13.5C2.42 16.44 5.47 18 9 18z"/><path fill="#FBBC05" d="M3.7 10.62a5.4 5.4 0 0 1 0-3.24l-2.76-2.13a9.04 9.04 0 0 0 0 7.5l2.76-2.13z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.47 1.05 11.43 0 9 0 5.47 0 2.42 1.56.94 4.5l2.76 2.13C4.45 5.24 6.54 3.58 9 3.58z"/></svg>
+        Sign in with Google (G-Suite)
+      </button>
+      <div id="mock-checkbox-container" style="display:none; text-align:center;margin-top:var(--space-2);">
+        <label style="font-size:0.75rem;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+          <input type="checkbox" id="use-mock-login" /> Use Mock G-Suite Login (Testing)
+        </label>
+      </div>
+    </div>
+
+    <!-- Mock G-Suite Form -->
+    <div id="mock-login-section" style="display:none;background:var(--gray-50);padding:var(--space-4);border-radius:var(--radius-lg);border:1px dashed var(--border);margin-bottom:var(--space-6);">
+      <h4 style="font-size:0.8rem;margin-bottom:var(--space-2);">Mock G-Suite Login</h4>
+      <div class="form-group" style="margin-bottom:var(--space-3);">
+        <label class="form-label" for="mock-email">Mock KSoM G-Suite Email</label>
+        <input class="form-control" type="email" id="mock-email" placeholder="sponsor@ksom.res.in" value="sponsor@ksom.res.in" />
+      </div>
+      <button class="btn btn-primary btn-sm" type="button" id="mock-submit-btn">Mock Sponsor Sign In</button>
+    </div>
+
+    <!-- Staff Login Section (Hidden by default, enabled via ?dev=true) -->
+    <div id="staff-login-section" style="display:none">
+      <div style="display:flex;align-items:center;margin-bottom:var(--space-6);">
+        <hr style="flex:1;border:none;border-top:1px solid var(--border);margin:0;" />
+        <span style="font-size:0.75rem;color:var(--text-muted);padding:0 var(--space-3);">OR STAFF SIGN IN</span>
+        <hr style="flex:1;border:none;border-top:1px solid var(--border);margin:0;" />
+      </div>
+
+      <!-- Staff Forms -->
+      <form id="login-form" novalidate>
+        <div class="form-group" style="margin-bottom:var(--space-5);">
+          <label class="form-label required" for="email">Email Address</label>
+          <input class="form-control" type="email" id="email" placeholder="staff@ksom.res.in" autocomplete="email" required />
+        </div>
+
+        <div class="form-group" style="margin-bottom:var(--space-6);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);">
+            <label class="form-label required" for="password" style="margin-bottom:0">Password</label>
+            <button type="button" id="toggle-pw" style="font-size:0.75rem;color:var(--primary);font-weight:600;cursor:pointer;border:none;background:none">Show</button>
+          </div>
+          <input class="form-control" type="password" id="password" placeholder="••••••••" autocomplete="current-password" required />
+        </div>
+
+        <button class="btn btn-primary btn-full btn-lg" type="submit" id="login-btn">
+          Sign In →
+        </button>
+      </form>
+    </div>
+
+    <div style="margin-top:var(--space-8);text-align:center;padding-top:var(--space-6);border-top:1px solid var(--border);">
+      <a href="/" style="font-size:0.8rem;color:var(--text-muted)">← Back to Public Site</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api, auth } from '/js/api.js';
+
+    // Redirect if already logged in
+    if (auth.isLoggedIn()) {
+      const user = auth.getUser();
+      if (user && user.role === 'sponsor') {
+        window.location.href = '/admin/sponsor.html';
+      } else {
+        window.location.href = '/admin/dashboard.html';
+      }
+    }
+
+    const toggleBtn = document.getElementById('toggle-pw');
+    const pwField = document.getElementById('password');
+    toggleBtn.addEventListener('click', () => {
+      const isHidden = pwField.type === 'password';
+      pwField.type = isHidden ? 'text' : 'password';
+      toggleBtn.textContent = isHidden ? 'Hide' : 'Show';
+    });
+
+    const useMockCheckbox = document.getElementById('use-mock-login');
+    const mockSection = document.getElementById('mock-login-section');
+    useMockCheckbox.addEventListener('change', (e) => {
+      mockSection.style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    // Check if '?dev=true' or '?dev=1' is in query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const isDevMode = urlParams.get('dev') === 'true' || urlParams.get('dev') === '1';
+
+    // Show dev sections if requested in URL
+    if (isDevMode) {
+      document.getElementById('mock-checkbox-container').style.display = 'block';
+      document.getElementById('staff-login-section').style.display = 'block';
+    }
+
+    // Google Identity Services Integration
+    window.triggerGoogleInit = async function() {
+      if (typeof google === 'undefined' || !google.accounts) return;
+      try {
+        const config = await api.get('/auth/config').catch(() => ({}));
+        if (config && config.googleClientId) {
+          const clientId = config.googleClientId;
+          
+          document.getElementById('google-signin-div').style.display = 'flex';
+          document.getElementById('google-login-btn').style.display = 'none';
+          
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredential
+          });
+          
+          google.accounts.id.renderButton(
+            document.getElementById('google-signin-div'),
+            { theme: 'outline', size: 'large', width: 340 }
+          );
+        } else {
+          // If no Client ID is configured, automatically show mock/staff options so developers are not locked out
+          document.getElementById('mock-checkbox-container').style.display = 'block';
+          document.getElementById('staff-login-section').style.display = 'block';
+        }
+      } catch (e) {
+        console.warn('Failed to load Google Sign-In config:', e);
+        document.getElementById('mock-checkbox-container').style.display = 'block';
+        document.getElementById('staff-login-section').style.display = 'block';
+      }
+    };
+
+    async function handleGoogleCredential(response) {
+      const errorBox = document.getElementById('error-box');
+      errorBox.style.display = 'none';
+      try {
+        const data = await api.post('/auth/google-login', { token: response.credential });
+        auth.setSession(data.token, data.user);
+        if (data.user.role === 'sponsor') {
+          window.location.href = '/admin/sponsor.html';
+        } else {
+          window.location.href = '/admin/dashboard.html';
+        }
+      } catch (err) {
+        errorBox.textContent = err.message || 'Google authentication failed.';
+        errorBox.style.display = 'block';
+      }
+    }
+
+    // Attempt GSI init immediately in case GSI script loaded before this script runs
+    if (typeof google !== 'undefined') {
+      window.triggerGoogleInit();
+    }
+
+    // Fallback static button (alert / check mock login option)
+    document.getElementById('google-login-btn').addEventListener('click', () => {
+      alert("Google G-Suite OAuth is not configured yet (no Client ID found).\n\nEnabling mock login for testing.");
+      document.getElementById('mock-checkbox-container').style.display = 'block';
+      document.getElementById('staff-login-section').style.display = 'block';
+      useMockCheckbox.checked = true;
+      mockSection.style.display = 'block';
+      document.getElementById('mock-email').focus();
+    });
+
+    // Mock Login Submit
+    document.getElementById('mock-submit-btn').addEventListener('click', async () => {
+      const email = document.getElementById('mock-email').value.trim();
+      const errorBox = document.getElementById('error-box');
+      errorBox.style.display = 'none';
+
+      if (!email) {
+        errorBox.textContent = 'Please enter a mock email.';
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      if (!email.toLowerCase().endsWith('@ksom.res.in')) {
+        errorBox.textContent = 'Only KSoM G-Suite accounts (@ksom.res.in) are permitted.';
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      try {
+        const data = await api.post('/auth/google-login', { email, mock: true });
+        auth.setSession(data.token, data.user);
+        if (data.user.role === 'sponsor') {
+          window.location.href = '/admin/sponsor.html';
+        } else {
+          window.location.href = '/admin/dashboard.html';
+        }
+      } catch(err) {
+        errorBox.textContent = err.message || 'Mock sign in failed.';
+        errorBox.style.display = 'block';
+      }
+    });
+
+    // Staff Login Submit
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errorBox = document.getElementById('error-box');
+      const btn = document.getElementById('login-btn');
+
+      errorBox.style.display = 'none';
+      if (!email || !password) { errorBox.textContent = 'Please enter your email and password.'; errorBox.style.display = 'block'; return; }
+
+      btn.disabled = true; btn.textContent = 'Signing in…';
+
+      try {
+        const data = await api.login(email, password);
+        auth.setSession(data.token, data.user);
+        if (data.user.role === 'sponsor') {
+          window.location.href = '/admin/sponsor.html';
+        } else {
+          window.location.href = '/admin/dashboard.html';
+        }
+      } catch(err) {
+        errorBox.textContent = err.message || 'Invalid email or password.';
+        errorBox.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Sign In →';
+      }
+    });
+  </script>
+</body>
+</html>

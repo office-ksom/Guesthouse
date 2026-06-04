@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KSoM Guesthouse — Kerala School of Mathematics</title>
+  <meta name="description" content="Stay at the Kerala School of Mathematics Guesthouse — comfortable, affordable accommodation for visiting scholars, researchers, and faculty on the KSoM campus in Kozhikode." />
+  <meta name="keywords" content="KSoM guesthouse, Kerala School of Mathematics accommodation, Kozhikode guest house, KSOM stay" />
+  <meta property="og:title" content="KSoM Guesthouse — Kerala School of Mathematics" />
+  <meta property="og:description" content="Comfortable on-campus accommodation for visiting scholars and researchers at KSoM, Kozhikode." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <!-- ── Navigation ────────────────────────────────────────────── -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar__inner">
+      <a href="/" class="navbar__brand">
+        <div class="navbar__logo">KG</div>
+        <div>
+          <div class="navbar__title">KSoM Guesthouse</div>
+          <div class="navbar__subtitle">Kerala School of Mathematics</div>
+        </div>
+      </a>
+
+      <div class="navbar__nav" id="main-nav">
+        <a href="/" class="nav-link active">Home</a>
+        <a href="/rooms.html" class="nav-link">Rooms</a>
+        <a href="/availability.html" class="nav-link">Availability</a>
+        <a href="/gallery.html" class="nav-link">Gallery</a>
+        <a href="/contact.html" class="nav-link">Contact</a>
+      </div>
+
+      <div class="navbar__cta">
+        <a href="/admin/login.html" class="btn btn-primary btn-sm login-book-btn">Login to Book Rooms</a>
+        <button class="navbar__toggle" id="nav-toggle" aria-label="Toggle menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content">
+
+  <!-- ── Hero ──────────────────────────────────────────────────── -->
+  <section class="hero" id="hero" data-section-id="hero">
+    <div class="hero__bg-pattern"></div>
+    <div class="container">
+      <div class="hero__content">
+        <div class="hero__badge">
+          📍 On-Campus Accommodation · Kozhikode, Kerala
+        </div>
+        <h1 class="hero__title">
+          A Home Away from<br />
+          <span>Academia</span>
+        </h1>
+        <p class="hero__subtitle">
+          The KSoM Guesthouse offers serene, well-appointed rooms on the Kerala School
+          of Mathematics campus — the ideal base for visiting scholars, researchers,
+          and faculty attending programmes at KSoM.
+        </p>
+        <div class="hero__actions">
+          <a href="/admin/login.html" class="btn btn-primary btn-lg login-book-btn">
+            🔑 Login to Book Rooms
+          </a>
+          <a href="/rooms.html" class="btn btn-secondary btn-lg">
+            View Room Status →
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div style="position:absolute; bottom:0; left:0; right:0; transform:translateY(50%);">
+      <div class="container">
+        <div class="booking-strip" id="quick-book">
+          <div style="margin-bottom:1rem;">
+            <h3 style="font-family:var(--font-heading);font-size:1rem;color:var(--text-primary)">Quick Room Vacancy Check</h3>
+          </div>
+          <div class="booking-strip__grid">
+            <div class="form-group">
+              <label class="form-label" for="qs-checkin">Check-in Date</label>
+              <input class="form-control" type="date" id="qs-checkin" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="qs-checkout">Check-out Date</label>
+              <input class="form-control" type="date" id="qs-checkout" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="qs-type">Room Type</label>
+              <select class="form-control" id="qs-type">
+                <option value="">Any Type</option>
+                <option value="single">Single Room</option>
+                <option value="double">Double Room</option>
+                <option value="suite">Suite</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" id="qs-btn" style="height:46px;align-self:flex-end">
+              Check Vacancy
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Spacer for booking strip overlap -->
+  <div style="height:100px;background:var(--bg)"></div>
+
+  <!-- ── Stats Banner ───────────────────────────────────────────── -->
+  <section data-section-id="stats" style="background:var(--bg); padding:var(--space-16) 0 var(--space-20);">
+    <div class="container">
+      <div class="grid-4 reveal">
+        <div style="text-align:center; padding:var(--space-6);">
+          <div style="font-family:var(--font-heading);font-size:2.5rem;font-weight:800;color:var(--primary)">5</div>
+          <div style="font-size:0.875rem;color:var(--text-muted);margin-top:var(--space-1)">Comfortable Rooms</div>
+        </div>
+        <div style="text-align:center; padding:var(--space-6);">
+          <div style="font-family:var(--font-heading);font-size:2.5rem;font-weight:800;color:var(--primary)">₹800</div>
+          <div style="font-size:0.875rem;color:var(--text-muted);margin-top:var(--space-1)">Starting Per Night</div>
+        </div>
+        <div style="text-align:center; padding:var(--space-6);">
+          <div style="font-family:var(--font-heading);font-size:2.5rem;font-weight:800;color:var(--primary)">24/7</div>
+          <div style="font-size:0.875rem;color:var(--text-muted);margin-top:var(--space-1)">Reception Support</div>
+        </div>
+        <div style="text-align:center; padding:var(--space-6);">
+          <div style="font-family:var(--font-heading);font-size:2.5rem;font-weight:800;color:var(--primary)">Wi-Fi</div>
+          <div style="font-size:0.875rem;color:var(--text-muted);margin-top:var(--space-1)">High-Speed Campus Network</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Rooms Section ──────────────────────────────────────────── -->
+  <section data-section-id="rooms" class="section" style="background:white;">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-header__label">Our Rooms</div>
+        <h2 class="section-header__title">Accommodation for Every Need</h2>
+        <p class="section-header__subtitle">
+          From private single rooms to spacious suites, all rooms are designed
+          for scholarly comfort with modern amenities.
+        </p>
+      </div>
+      <div class="grid-3" id="featured-rooms">
+        <div class="room-card reveal">
+          <div class="room-card__image-placeholder">
+            <svg width="64" height="64" fill="rgba(255,255,255,0.3)" viewBox="0 0 24 24"><path d="M19 7V4H5v3H2v13h20V7h-3zM7 6h10v1H7V6zm12 12H5V9h14v9z"/></svg>
+          </div>
+          <div class="room-card__body">
+            <div class="room-card__type">Single Room · AC</div>
+            <h3 class="room-card__name">Room 101</h3>
+            <p class="room-card__desc">A comfortable single-occupancy room with garden view, ideal for solo visiting scholars and researchers.</p>
+            <div class="room-card__amenities">
+              <span class="amenity-tag">AC</span>
+              <span class="amenity-tag">Wi-Fi</span>
+              <span class="amenity-tag">Hot Water</span>
+              <span class="amenity-tag">Study Desk</span>
+            </div>
+          </div>
+          <div class="room-card__footer" style="justify-content:flex-start">
+            <div class="room-card__price">
+              <span class="room-card__price-amount">₹800</span>
+              <span class="room-card__price-unit">per night</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="room-card reveal" style="transition-delay:0.1s">
+          <div class="room-card__image-placeholder" style="background:linear-gradient(135deg,#004080,#0055a5,#cc6600)">
+            <span class="room-card__badge">Popular</span>
+            <svg width="64" height="64" fill="rgba(255,255,255,0.3)" viewBox="0 0 24 24"><path d="M19 7V4H5v3H2v13h20V7h-3zM7 6h10v1H7V6zm12 12H5V9h14v9z"/></svg>
+          </div>
+          <div class="room-card__body">
+            <div class="room-card__type">Double Room · AC</div>
+            <h3 class="room-card__name">Room 201</h3>
+            <p class="room-card__desc">Spacious double room suitable for couples or two colleagues attending the same programme.</p>
+            <div class="room-card__amenities">
+              <span class="amenity-tag">AC</span>
+              <span class="amenity-tag">Wi-Fi</span>
+              <span class="amenity-tag">Balcony</span>
+              <span class="amenity-tag">Smart TV</span>
+            </div>
+          </div>
+          <div class="room-card__footer" style="justify-content:flex-start">
+            <div class="room-card__price">
+              <span class="room-card__price-amount">₹1,400</span>
+              <span class="room-card__price-unit">per night</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="room-card reveal" style="transition-delay:0.2s">
+          <div class="room-card__image-placeholder" style="background:linear-gradient(135deg,#002244,#003366,#FF9933)">
+            <span class="room-card__badge">Premium</span>
+            <svg width="64" height="64" fill="rgba(255,255,255,0.3)" viewBox="0 0 24 24"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg>
+          </div>
+          <div class="room-card__body">
+            <div class="room-card__type">Suite · AC</div>
+            <h3 class="room-card__name">Suite 301</h3>
+            <p class="room-card__desc">Our premium suite offering a separate living area, ideal for senior faculty and distinguished guests.</p>
+            <div class="room-card__amenities">
+              <span class="amenity-tag">AC</span>
+              <span class="amenity-tag">Wi-Fi</span>
+              <span class="amenity-tag">Sitting Area</span>
+              <span class="amenity-tag">Mini Kitchen</span>
+            </div>
+          </div>
+          <div class="room-card__footer" style="justify-content:flex-start">
+            <div class="room-card__price">
+              <span class="room-card__price-amount">₹2,500</span>
+              <span class="room-card__price-unit">per night</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top:var(--space-10);">
+        <a href="/rooms.html" class="btn btn-outline btn-lg">View All Rooms →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Why Choose Us ──────────────────────────────────────────── -->
+  <section data-section-id="why-choose-us" class="section" style="background:var(--bg);">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-header__label">Why Stay with Us</div>
+        <h2 class="section-header__title">The KSoM Guesthouse Advantage</h2>
+      </div>
+      <div class="grid-3">
+        <div class="card reveal" style="padding:var(--space-8);text-align:center;">
+          <div style="width:64px;height:64px;background:var(--blue-50);border-radius:var(--radius-xl);display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto var(--space-5);">🏛️</div>
+          <h4 style="margin-bottom:var(--space-3);">On-Campus Location</h4>
+          <p style="font-size:0.9rem;">Walk to lecture halls, libraries, and seminar rooms. No commute, just scholarship.</p>
+        </div>
+        <div class="card reveal" style="padding:var(--space-8);text-align:center;transition-delay:0.1s">
+          <div style="width:64px;height:64px;background:var(--saffron-100);border-radius:var(--radius-xl);display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto var(--space-5);">📶</div>
+          <h4 style="margin-bottom:var(--space-3);">High-Speed Internet</h4>
+          <p style="font-size:0.9rem;">Access the KSoM campus network for uninterrupted research and remote collaboration.</p>
+        </div>
+        <div class="card reveal" style="padding:var(--space-8);text-align:center;transition-delay:0.2s">
+          <div style="width:64px;height:64px;background:#f0fdf4;border-radius:var(--radius-xl);display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto var(--space-5);">🌿</div>
+          <h4 style="margin-bottom:var(--space-3);">Serene Campus</h4>
+          <p style="font-size:0.9rem;">Nestled in Kerala's lush greenery — a peaceful environment perfect for deep focus.</p>
+        </div>
+        <div class="card reveal" style="padding:var(--space-8);text-align:center;transition-delay:0.05s">
+          <div style="width:64px;height:64px;background:var(--blue-50);border-radius:var(--radius-xl);display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto var(--space-5);">💰</div>
+          <h4 style="margin-bottom:var(--space-3);">Affordable Rates</h4>
+          <p style="font-size:0.9rem;">Government-institute pricing — excellent value without compromising on comfort.</p>
+        </div>
+        <div class="card reveal" style="padding:var(--space-8);text-align:center;transition-delay:0.15s">
+          <div style="width:64px;height:64px;background:var(--saffron-100);border-radius:var(--radius-xl);display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto var(--space-5);">🔐</div>
+          <h4 style="margin-bottom:var(--space-3);">Safe & Secure</h4>
+          <p style="font-size:0.9rem;">24/7 campus security, secure access, and dedicated reception support for all guests.</p>
+        </div>
+        <div class="card reveal" style="padding:var(--space-8);text-align:center;transition-delay:0.25s">
+          <div style="width:64px;height:64px;background:#f0fdf4;border-radius:var(--radius-xl);display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto var(--space-5);">📋</div>
+          <h4 style="margin-bottom:var(--space-3);">Easy Booking</h4>
+          <p style="font-size:0.9rem;">Book online in minutes and receive your confirmation instantly — no paperwork.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Contact Strip ──────────────────────────────────────────── -->
+  <section data-section-id="contact-strip" style="background:linear-gradient(135deg,var(--blue-800),var(--blue-600));padding:var(--space-16) 0;">
+    <div class="container" style="text-align:center;">
+      <h2 style="color:white;margin-bottom:var(--space-4);" class="reveal">Planning to Stay at KSoM?</h2>
+      <p style="color:rgba(255,255,255,0.8);font-size:1.1rem;margin-bottom:var(--space-8);max-width:560px;margin-left:auto;margin-right:auto;" class="reveal">
+        Direct bookings are not permitted. Please contact your KSoM sponsor, coordinator, or supervisor to initiate a booking request.
+      </p>
+      <div class="flex-center gap-4 reveal" style="flex-wrap:wrap;">
+        <a href="/admin/login.html" class="btn btn-primary btn-lg login-book-btn">🔑 Login to Book Rooms</a>
+        <a href="/contact.html" class="btn btn-secondary btn-lg">Contact Us</a>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <!-- ── Footer ─────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <div class="footer__logo">
+            <div class="footer__logo-icon">KG</div>
+            <div>
+              <div class="footer__name">KSoM Guesthouse</div>
+              <div style="font-size:0.7rem;color:rgba(255,255,255,0.4)">Kerala School of Mathematics</div>
+            </div>
+          </div>
+          <p class="footer__tagline">
+            Providing comfortable, affordable accommodation for visiting scholars
+            and researchers on the KSoM campus since its establishment.
+          </p>
+        </div>
+
+        <div>
+          <h5 class="footer__heading">Navigation</h5>
+          <div class="footer__links">
+            <a href="/" class="footer__link">Home</a>
+            <a href="/rooms.html" class="footer__link">Rooms & Tariff</a>
+            <a href="/availability.html" class="footer__link">Check Availability</a>
+            <a href="/gallery.html" class="footer__link">Photo Gallery</a>
+            <a href="/contact.html" class="footer__link">Contact Us</a>
+          </div>
+        </div>
+
+        <div>
+          <h5 class="footer__heading">Portal Access</h5>
+          <div class="footer__links">
+            <a href="/admin/login.html" class="footer__link login-book-btn">Login to Book Rooms</a>
+            <a href="/availability.html" class="footer__link">Room Vacancy Status</a>
+            <a href="/contact.html" class="footer__link">Contact Coordinator</a>
+          </div>
+        </div>
+
+        <div>
+          <h5 class="footer__heading">Contact</h5>
+          <div class="footer__contact">
+            <div class="footer__contact-item">
+              <span class="footer__contact-icon">📍</span>
+              <span id="footer-address">Kerala School of Mathematics, Kozhikode, Kerala — 673 016</span>
+            </div>
+            <div class="footer__contact-item">
+              <span class="footer__contact-icon">📞</span>
+              <span><a id="footer-phone" href="tel:+914952809000" style="color:inherit;text-decoration:none;">+91-495-2809000</a></span>
+            </div>
+            <div class="footer__contact-item">
+              <span class="footer__contact-icon">✉️</span>
+              <span><a id="footer-email" href="mailto:guesthouse@ksom.res.in" style="color:inherit;text-decoration:none;">guesthouse@ksom.res.in</a></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="footer__divider" />
+      <div class="footer__bottom">
+        <p class="footer__copy">© 2025 Kerala School of Mathematics. All rights reserved.</p>
+        <a href="/admin/login.html" style="font-size:0.75rem;color:rgba(255,255,255,0.3);transition:color 0.2s" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.3)'">Staff Login</a>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { initNavbar, initReveal } from '/js/ui.js';
+    import { initCMS } from '/js/cms.js';
+
+    initNavbar();
+    initReveal();
+
+    // Initialize CMS section loading
+    initCMS('index', '#main-content');
+
+    // Quick booking strip date defaults
+    const today = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    document.getElementById('qs-checkin').value = today;
+    document.getElementById('qs-checkin').min = today;
+    document.getElementById('qs-checkout').value = tomorrow;
+    document.getElementById('qs-checkout').min = tomorrow;
+
+    document.getElementById('qs-checkin').addEventListener('change', e => {
+      const next = new Date(new Date(e.target.value).getTime() + 86400000).toISOString().split('T')[0];
+      document.getElementById('qs-checkout').min = next;
+      if (document.getElementById('qs-checkout').value <= e.target.value) {
+        document.getElementById('qs-checkout').value = next;
+      }
+    });
+
+    document.getElementById('qs-btn').addEventListener('click', () => {
+      const ci = document.getElementById('qs-checkin').value;
+      const co = document.getElementById('qs-checkout').value;
+      const type = document.getElementById('qs-type').value;
+      const params = new URLSearchParams({ start: ci, end: co });
+      if (type) params.append('type', type);
+      window.location.href = `/availability.html?${params}`;
+    });
+  </script>
+</body>
+</html>

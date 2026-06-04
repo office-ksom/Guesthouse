@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Photo Gallery — KSoM Guesthouse</title>
+  <meta name="description" content="Browse photos of the KSoM Guesthouse rooms, campus, and facilities." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>" />
+  <link rel="stylesheet" href="css/main.css" />
+  <style>
+    .gallery-filters { display: flex; gap: var(--space-3); margin-bottom: var(--space-8); flex-wrap: wrap; }
+    .gfil-btn {
+      padding: var(--space-2) var(--space-5);
+      border-radius: var(--radius-full);
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: 2px solid var(--border);
+      background: white;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .gfil-btn:hover, .gfil-btn.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+    }
+    .masonry {
+      columns: 3;
+      column-gap: var(--space-5);
+    }
+    .masonry-item {
+      break-inside: avoid;
+      margin-bottom: var(--space-5);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      box-shadow: var(--shadow-md);
+      transition: transform var(--transition-base), box-shadow var(--transition-base);
+    }
+    .masonry-item:hover { transform: scale(1.02); box-shadow: var(--shadow-xl); }
+    .masonry-item .overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,34,68,0.8) 0%, transparent 50%);
+      opacity: 0;
+      transition: opacity var(--transition-base);
+      display: flex;
+      align-items: flex-end;
+      padding: var(--space-4);
+    }
+    .masonry-item:hover .overlay { opacity: 1; }
+    .overlay-label { color: white; font-weight: 600; font-size: 0.875rem; }
+    .gallery-placeholder {
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: var(--space-3);
+      color: rgba(255,255,255,0.7);
+      font-size: 0.875rem;
+    }
+    /* Lightbox */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .lightbox img { max-width: 90vw; max-height: 85vh; border-radius: var(--radius-xl); }
+    .lightbox-close { position: absolute; top: var(--space-6); right: var(--space-6); width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.15); color: white; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background var(--transition-fast); }
+    .lightbox-close:hover { background: rgba(255,255,255,0.25); }
+    @media (max-width: 900px) { .masonry { columns: 2; } }
+    @media (max-width: 580px) { .masonry { columns: 1; } }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar__inner">
+      <a href="/" class="navbar__brand">
+        <div class="navbar__logo">KG</div>
+        <div><div class="navbar__title">KSoM Guesthouse</div><div class="navbar__subtitle">Kerala School of Mathematics</div></div>
+      </a>
+      <div class="navbar__nav" id="main-nav">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/rooms.html" class="nav-link">Rooms</a>
+        <a href="/availability.html" class="nav-link">Availability</a>
+        <a href="/gallery.html" class="nav-link active">Gallery</a>
+        <a href="/contact.html" class="nav-link">Contact</a>
+      </div>
+      <div class="navbar__cta">
+        <a href="/booking.html" class="btn btn-primary btn-sm">Book a Room</a>
+        <button class="navbar__toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content">
+
+  <!-- Page Hero -->
+  <section class="page-hero" data-section-id="page-hero">
+    <div class="container">
+      <div class="page-hero__content">
+        <span class="page-hero__label">Visual Tour</span>
+        <h1 class="page-hero__title">Photo Gallery</h1>
+        <p class="page-hero__subtitle">A glimpse of our rooms, campus, and facilities at the KSoM Guesthouse.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gallery -->
+  <section class="section" data-section-id="gallery" style="background:var(--bg);">
+    <div class="container">
+      <div class="gallery-filters">
+        <button class="gfil-btn active" data-cat="all">All Photos</button>
+        <button class="gfil-btn" data-cat="rooms">Rooms</button>
+        <button class="gfil-btn" data-cat="campus">Campus</button>
+        <button class="gfil-btn" data-cat="facilities">Facilities</button>
+      </div>
+
+      <div class="masonry" id="gallery-grid">
+        <!-- Gallery items rendered by JS with placeholder visuals -->
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="background:white;padding:var(--space-16) 0;text-align:center;" data-section-id="cta">
+    <div class="container">
+      <h2 class="reveal" style="margin-bottom:var(--space-4)">Like What You See?</h2>
+      <p class="reveal" style="color:var(--text-secondary);margin-bottom:var(--space-8);font-size:1.1rem">Book your stay at the KSoM Guesthouse and experience it in person.</p>
+      <a href="/booking.html" class="btn btn-primary btn-lg reveal">Book a Room →</a>
+    </div>
+  </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand"><div class="footer__logo"><div class="footer__logo-icon">KG</div><div><div class="footer__name">KSoM Guesthouse</div></div></div><p class="footer__tagline">Comfortable accommodation for the KSoM academic community.</p></div>
+        <div><h5 class="footer__heading">Navigation</h5><div class="footer__links"><a href="/" class="footer__link">Home</a><a href="/rooms.html" class="footer__link">Rooms</a><a href="/booking.html" class="footer__link">Book a Room</a><a href="/contact.html" class="footer__link">Contact</a></div></div>
+        <div style="grid-column:span 2">
+          <h5 class="footer__heading">Contact</h5>
+          <div class="footer__contact">
+            <div class="footer__contact-item">
+              <span class="footer__contact-icon">📍</span>
+              <span id="footer-address">KSoM, Kozhikode, Kerala</span>
+            </div>
+            <div class="footer__contact-item">
+              <span class="footer__contact-icon">📞</span>
+              <span><a id="footer-phone" href="tel:+914952809000" style="color:inherit;text-decoration:none;">+91-495-2809000</a></span>
+            </div>
+            <div class="footer__contact-item">
+              <span class="footer__contact-icon">✉️</span>
+              <span><a id="footer-email" href="mailto:guesthouse@ksom.res.in" style="color:inherit;text-decoration:none;">guesthouse@ksom.res.in</a></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <hr class="footer__divider"/><div class="footer__bottom"><p class="footer__copy">© 2025 Kerala School of Mathematics. All rights reserved.</p></div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { initNavbar, initReveal } from '/js/ui.js';
+    import { api } from '/js/api.js';
+
+    initNavbar();
+    initReveal();
+
+    // Gallery items (using styled placeholders until real photos are added)
+    let items = [
+      { cat: 'rooms',      label: 'Single Room — Room 101', emoji: '🛏️', h: 260, grad: 'linear-gradient(135deg,#003366,#0055a5)' },
+      { cat: 'campus',     label: 'Campus Garden',          emoji: '🌿', h: 340, grad: 'linear-gradient(135deg,#14532d,#16a34a)' },
+      { cat: 'rooms',      label: 'Double Room — Room 201', emoji: '🛏️🛏️', h: 300, grad: 'linear-gradient(135deg,#004080,#0070cc)' },
+      { cat: 'facilities', label: 'Reception Area',         emoji: '🏛️', h: 220, grad: 'linear-gradient(135deg,#1e1b4b,#4338ca)' },
+      { cat: 'rooms',      label: 'Suite 301 — Living Area',emoji: '🏨',  h: 280, grad: 'linear-gradient(135deg,#7c2d12,#ea580c)' },
+      { cat: 'campus',     label: 'KSoM Main Building',     emoji: '🏫',  h: 200, grad: 'linear-gradient(135deg,#1e3a5f,#003366)' },
+      { cat: 'facilities', label: 'Study Lounge',           emoji: '📚',  h: 320, grad: 'linear-gradient(135deg,#4a044e,#a21caf)' },
+      { cat: 'rooms',      label: 'Room Bathroom',          emoji: '🚿',  h: 250, grad: 'linear-gradient(135deg,#0f172a,#1e40af)' },
+      { cat: 'campus',     label: 'Evening Campus Walk',    emoji: '🌅',  h: 260, grad: 'linear-gradient(135deg,#92400e,#f59e0b)' },
+      { cat: 'facilities', label: 'Dining Area',            emoji: '🍽️',  h: 230, grad: 'linear-gradient(135deg,#064e3b,#10b981)' },
+      { cat: 'rooms',      label: 'Suite 301 — Bedroom',    emoji: '🛌',  h: 300, grad: 'linear-gradient(135deg,#1c1917,#78350f)' },
+      { cat: 'campus',     label: 'Courtyard',              emoji: '☀️',  h: 350, grad: 'linear-gradient(135deg,#0c4a6e,#0284c7)' },
+    ];
+
+    const grid = document.getElementById('gallery-grid');
+    let active = 'all';
+
+    function render(cat) {
+      const filtered = cat === 'all' ? items : items.filter(i => i.cat === cat);
+      grid.innerHTML = filtered.map(item => `
+        <div class="masonry-item reveal" style="height:${item.h}px;">
+          <div class="gallery-placeholder" style="height:100%;background:${item.grad};">
+            <span style="font-size:3rem;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.3))">${item.emoji}</span>
+            <span style="font-size:0.75rem;opacity:0.7;text-align:center;padding:0 1rem">${item.label}</span>
+          </div>
+          <div class="overlay"><span class="overlay-label">${item.label}</span></div>
+        </div>
+      `).join('');
+      initReveal();
+    }
+
+    // Load dynamic gallery items + initialize CMS sections
+    async function loadGalleryAndCMS() {
+      try {
+        const res = await api.getSettings();
+        if (res && res.settings && res.settings.gallery_items) {
+          try {
+            const loadedItems = JSON.parse(res.settings.gallery_items);
+            if (Array.isArray(loadedItems) && loadedItems.length > 0) {
+              items = loadedItems;
+            }
+          } catch (e) {
+            console.warn('Error parsing gallery items:', e);
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading gallery settings:', e);
+      }
+      
+      // Render gallery items in the layout first
+      render(active);
+      
+      // Then apply dynamic sections, visibility, and sorting
+      await initCMS('gallery', '#main-content');
+    }
+
+    document.querySelectorAll('.gfil-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.gfil-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        active = btn.dataset.cat;
+        render(active);
+      });
+    });
+
+    loadGalleryAndCMS();
+  </script>
+</body>
+</html>

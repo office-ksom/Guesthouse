@@ -1,0 +1,22 @@
+{
+  "name": "ksom-guesthouse-worker",
+  "version": "1.0.0",
+  "description": "KSoM Guesthouse API — Cloudflare Worker",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 execute ksom-guesthouse-db --file=src/db/schema.sql",
+    "db:migrate:local": "wrangler d1 execute ksom-guesthouse-db --local --file=src/db/schema.sql",
+    "db:seed": "wrangler d1 execute ksom-guesthouse-db --file=src/db/seed.sql",
+    "db:seed:local": "wrangler d1 execute ksom-guesthouse-db --local --file=src/db/seed.sql"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^3.80.0"
+  }
+}

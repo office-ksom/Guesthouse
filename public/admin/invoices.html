@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Invoices — KSoM Guesthouse Admin</title>
+  <meta name="robots" content="noindex, nofollow"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>"/>
+  <link rel="stylesheet" href="/css/main.css"/>
+  <link rel="stylesheet" href="/css/admin.css"/>
+</head>
+<body>
+<div class="admin-layout" id="app"></div>
+<script type="module">
+import { initAdminLayout, api } from '/js/auth.js';
+import { renderAdminShell, renderAdminTopbar } from '/js/admin/shell.js';
+import { formatCurrency, formatDate, formatDatetime, statusBadge, toast, confirm } from '/js/ui.js';
+
+document.getElementById('app').innerHTML = `
+  ${renderAdminShell()}
+  <div class="admin-main">
+    ${renderAdminTopbar('Invoices', 'Billing and payment tracking')}
+    <div class="admin-content">
+
+      <!-- Filter bar -->
+      <div class="data-table-wrapper" style="margin-bottom:var(--space-5);padding:var(--space-5);">
+        <div style="display:flex;gap:var(--space-4);align-items:flex-end;flex-wrap:wrap;">
+          <div class="form-group" style="flex:1;min-width:160px;">
+            <label class="form-label">Payment Status</label>
+            <select class="form-control" id="filter-payment">
+              <option value="">All</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="paid">Paid</option>
+              <option value="partially_paid">Partially Paid</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="apply-filter">Filter</button>
+          <button class="btn btn-ghost" id="clear-filter">Clear</button>
+        </div>
+      </div>
+
+      <div class="data-table-wrapper">
+        <div class="data-table-header">
+          <span class="data-table-header__title">🧾 All Invoices</span>
+        </div>
+        <div id="invoices-wrap">
+          <div style="padding:3rem;text-align:center"><div class="spinner" style="margin:0 auto 1rem"></div><p>Loading invoices…</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invoice Modal (Print View) -->
+  <div class="modal-overlay" id="invoice-modal" style="display:none">
+    <div class="modal modal-lg">
+      <div class="modal__header">
+        <h3 class="modal__title" id="inv-modal-title">Invoice</h3>
+        <span class="modal__close" id="inv-close">✕</span>
+      </div>
+      <div class="modal__body" id="inv-body">Loading…</div>
+      <div class="modal__footer">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('invoice-modal').style.display='none'">Close</button>
+        <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ Print / Save PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mark Paid Modal -->
+  <div class="modal-overlay" id="pay-modal" style="display:none">
+    <div class="modal" style="max-width:400px">
+      <div class="modal__header"><h3 class="modal__title">Mark as Paid</h3><span class="modal__close" id="pay-close">✕</span></div>
+      <div class="modal__body">
+        <input type="hidden" id="pay-inv-id"/>
+        <div class="form-group" style="margin-bottom:var(--space-4);">
+          <label class="form-label">Payment Mode</label>
+          <select class="form-control" id="pay-mode">
+            <option value="cash">Cash</option>
+            <option value="upi">UPI</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="card">Card</option>
+            <option value="cheque">Cheque</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <input class="form-control" id="pay-notes" placeholder="Transaction ID or remarks (optional)"/>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn-ghost btn-sm" id="pay-cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="pay-confirm">Confirm Payment</button>
+      </div>
+    </div>
+  </div>
+`;
+
+initAdminLayout('Invoices', 'invoices');
+
+async function loadInvoices(params = {}) {
+  const wrap = document.getElementById('invoices-wrap');
+  try {
+    const data = await api.getInvoices(params);
+    const invoices = data.invoices || [];
+    if (!invoices.length) { wrap.innerHTML = `<div style="padding:3rem;text-align:center;color:var(--text-muted)">No invoices found.</div>`; return; }
+    wrap.innerHTML = `
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Invoice #</th><th>Booking Ref</th><th>Guest</th><th>Room</th><th>Amount</th><th>Payment Status</th><th>Issued</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${invoices.map(inv => `
+              <tr>
+                <td><code style="font-size:0.78rem;background:var(--gray-50);padding:2px 6px;border-radius:4px">${inv.invoice_number}</code></td>
+                <td style="font-size:0.8rem">${inv.booking_ref}</td>
+                <td style="font-weight:600;font-size:0.875rem">${inv.guest_name}</td>
+                <td style="font-size:0.875rem">${inv.room_name}</td>
+                <td style="font-family:var(--font-heading);font-weight:700;color:var(--primary)">${formatCurrency(inv.amount)}</td>
+                <td>${statusBadge(inv.payment_status)}</td>
+                <td style="font-size:0.8rem;color:var(--text-muted)">${formatDate(inv.issued_at)}</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="icon-btn icon-btn-view" onclick="viewInvoice(${inv.id})" title="View/Print">🖨️</button>
+                    ${inv.payment_status !== 'paid' ? `<button class="icon-btn icon-btn-edit" onclick="openPayModal(${inv.id})" title="Mark as Paid">💰</button>` : ''}
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch(e) {
+    wrap.innerHTML = `<div style="padding:2rem;color:var(--error)">Failed to load invoices.</div>`;
+  }
+}
+
+window.viewInvoice = async (id) => {
+  const modal = document.getElementById('invoice-modal');
+  const body  = document.getElementById('inv-body');
+  modal.style.display = 'flex';
+  body.innerHTML = `<div style="text-align:center;padding:2rem"><div class="spinner" style="margin:0 auto"></div></div>`;
+
+  try {
+    const { invoice: inv } = await api.getInvoice(id);
+    const nights = Math.ceil((new Date(inv.check_out_date) - new Date(inv.check_in_date)) / 86400000);
+    document.getElementById('inv-modal-title').textContent = inv.invoice_number;
+    body.innerHTML = `
+      <div style="max-width:560px;margin:0 auto;font-size:0.9rem;" id="printable-invoice">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:2px solid var(--blue-700);">
+          <div>
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:1.4rem;color:var(--blue-700)">KSoM Guesthouse</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">Kerala School of Mathematics, Kozhikode, Kerala — 673 016</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:var(--font-heading);font-weight:700;color:var(--accent);font-size:1.1rem">${inv.invoice_number}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">Issued: ${formatDate(inv.issued_at)}</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+          <div>
+            <div style="font-weight:700;margin-bottom:0.5rem;color:var(--text-muted);font-size:0.75rem;text-transform:uppercase">Bill To</div>
+            <div style="font-weight:700">${inv.guest_name}</div>
+            ${inv.guest_email ? `<div>${inv.guest_email}</div>` : ''}
+            ${inv.guest_phone ? `<div>${inv.guest_phone}</div>` : ''}
+            ${inv.organization ? `<div style="color:var(--text-muted)">${inv.organization}</div>` : ''}
+          </div>
+          <div>
+            <div style="font-weight:700;margin-bottom:0.5rem;color:var(--text-muted);font-size:0.75rem;text-transform:uppercase">Booking</div>
+            <div>${inv.booking_ref}</div>
+            <div>${inv.room_name} (${inv.room_type})</div>
+          </div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;">
+          <thead>
+            <tr style="background:var(--blue-700);color:white;font-size:0.8rem;">
+              <th style="padding:8px 12px;text-align:left">Description</th>
+              <th style="padding:8px 12px;text-align:center">Nights</th>
+              <th style="padding:8px 12px;text-align:right">Rate</th>
+              <th style="padding:8px 12px;text-align:right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:12px">${inv.room_name} — ${formatDate(inv.check_in_date)} to ${formatDate(inv.check_out_date)}</td>
+              <td style="padding:12px;text-align:center">${nights}</td>
+              <td style="padding:12px;text-align:right">${formatCurrency(inv.price_per_night)}</td>
+              <td style="padding:12px;text-align:right;font-weight:700">${formatCurrency(inv.amount)}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr style="background:var(--gray-50)">
+              <td colspan="3" style="padding:12px;font-weight:700;text-align:right">Total</td>
+              <td style="padding:12px;font-weight:800;font-size:1.1rem;color:var(--primary);text-align:right">${formatCurrency(inv.amount)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;background:${inv.payment_status==='paid'?'#f0fdf4':'#fff7ed'};border-radius:8px;padding:12px 16px;">
+          <span style="font-weight:700;color:${inv.payment_status==='paid'?'var(--success)':'#c2410c'}">Payment Status: ${inv.payment_status.toUpperCase().replace('_',' ')}</span>
+          ${inv.payment_mode ? `<span style="font-size:0.8rem;color:var(--text-muted)">Mode: ${inv.payment_mode}</span>` : ''}
+        </div>
+        ${inv.notes ? `<p style="margin-top:1rem;font-size:0.8rem;color:var(--text-muted)">Notes: ${inv.notes}</p>` : ''}
+      </div>
+    `;
+  } catch(e) {
+    body.innerHTML = `<p style="color:var(--error)">Failed to load invoice.</p>`;
+  }
+};
+
+window.openPayModal = (invId) => {
+  document.getElementById('pay-inv-id').value = invId;
+  document.getElementById('pay-modal').style.display = 'flex';
+};
+
+document.getElementById('pay-confirm').addEventListener('click', async () => {
+  const invId = document.getElementById('pay-inv-id').value;
+  const mode  = document.getElementById('pay-mode').value;
+  const notes = document.getElementById('pay-notes').value.trim();
+  const btn   = document.getElementById('pay-confirm');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await api.updateInvoice(invId, { payment_status: 'paid', payment_mode: mode, notes: notes || null });
+    toast('Payment recorded!', 'success');
+    document.getElementById('pay-modal').style.display = 'none';
+    loadInvoices(getFilters());
+  } catch(e) { toast(e.message || 'Failed to update invoice.', 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Confirm Payment'; }
+});
+
+function getFilters() {
+  const ps = document.getElementById('filter-payment').value;
+  return ps ? { payment_status: ps } : {};
+}
+document.getElementById('apply-filter').addEventListener('click', () => loadInvoices(getFilters()));
+document.getElementById('clear-filter').addEventListener('click', () => { document.getElementById('filter-payment').value=''; loadInvoices(); });
+document.getElementById('inv-close').addEventListener('click', () => document.getElementById('invoice-modal').style.display='none');
+document.getElementById('pay-close').addEventListener('click', () => document.getElementById('pay-modal').style.display='none');
+document.getElementById('pay-cancel').addEventListener('click', () => document.getElementById('pay-modal').style.display='none');
+
+loadInvoices();
+</script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — KSoM Guesthouse Admin</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+<div class="admin-layout" id="app">
+  <!-- Filled by JS -->
+</div>
+
+<script type="module">
+import { initAdminLayout, api } from '/js/auth.js';
+import { renderAdminShell, renderAdminTopbar } from '/js/admin/shell.js';
+import { formatCurrency, formatDate, formatDatetime, statusBadge } from '/js/ui.js';
+
+// ── Render Shell ───────────────────────────────────────────────
+document.getElementById('app').innerHTML = `
+  ${renderAdminShell()}
+  <div class="admin-main">
+    ${renderAdminTopbar('Dashboard', 'Overview of today\'s activity')}
+    <div class="admin-content">
+      <!-- KPI Cards -->
+      <div class="kpi-grid" id="kpi-grid">
+        ${['','','',''].map(() => `
+          <div class="kpi-card blue" style="animation:pulse 1.5s infinite">
+            <div style="height:44px;background:var(--gray-100);border-radius:var(--radius-md);margin-bottom:var(--space-4)"></div>
+            <div style="height:28px;background:var(--gray-100);border-radius:4px;margin-bottom:8px"></div>
+            <div style="height:14px;background:var(--gray-50);border-radius:4px;width:60%"></div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Recent Bookings -->
+      <div class="data-table-wrapper" id="recent-bookings-card">
+        <div class="data-table-header">
+          <span class="data-table-header__title">📅 Recent Bookings</span>
+          <a href="/admin/bookings.html" class="btn btn-ghost btn-sm">View All →</a>
+        </div>
+        <div style="padding:2rem;text-align:center;"><div class="spinner" style="margin:0 auto 1rem"></div><p>Loading…</p></div>
+      </div>
+
+      <!-- Quick Actions + Today's Activity -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin-top:var(--space-6);">
+        <div class="data-table-wrapper">
+          <div class="data-table-header"><span class="data-table-header__title">⚡ Quick Actions</span></div>
+          <div style="padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-3);">
+            <a href="/admin/sponsor.html" class="btn btn-outline btn-sm">+ New Booking</a>
+            <a href="/admin/bookings.html" class="btn btn-ghost btn-sm">📋 Manage Bookings</a>
+            <a href="/admin/rooms.html" class="btn btn-ghost btn-sm">🏠 Manage Rooms</a>
+            <a href="/admin/invoices.html" class="btn btn-ghost btn-sm">🧾 View Invoices</a>
+            <a href="/admin/guests.html" class="btn btn-ghost btn-sm">👥 Guest Directory</a>
+          </div>
+        </div>
+
+        <div class="data-table-wrapper">
+          <div class="data-table-header"><span class="data-table-header__title">📊 Occupancy Overview</span></div>
+          <div style="padding:var(--space-6);" id="occupancy-panel">
+            <div style="text-align:center;padding:2rem;"><div class="spinner" style="margin:0 auto"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+`;
+
+initAdminLayout('Dashboard', 'dashboard');
+
+// ── Load Stats ─────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const stats = await api.getStats();
+
+    document.getElementById('kpi-grid').innerHTML = `
+      <div class="kpi-card blue">
+        <div class="kpi-card__icon">🏠</div>
+        <div class="kpi-card__value">${stats.currently_occupied}</div>
+        <div class="kpi-card__label">Currently Occupied</div>
+      </div>
+      <div class="kpi-card saffron">
+        <div class="kpi-card__icon">✈️</div>
+        <div class="kpi-card__value">${stats.today_arrivals}</div>
+        <div class="kpi-card__label">Today's Arrivals</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-card__icon">🚪</div>
+        <div class="kpi-card__value">${stats.today_departures}</div>
+        <div class="kpi-card__label">Today's Departures</div>
+      </div>
+      <div class="kpi-card gray">
+        <div class="kpi-card__icon">⏳</div>
+        <div class="kpi-card__value">${stats.pending_bookings}</div>
+        <div class="kpi-card__label">Pending Bookings</div>
+      </div>
+    `;
+
+    const pct = stats.occupancy_rate;
+    document.getElementById('occupancy-panel').innerHTML = `
+      <div style="text-align:center;margin-bottom:var(--space-5);">
+        <div style="font-family:var(--font-heading);font-size:3rem;font-weight:800;color:var(--primary)">${pct}%</div>
+        <div style="color:var(--text-muted);font-size:0.875rem">Current Occupancy Rate</div>
+      </div>
+      <div style="background:var(--gray-100);border-radius:var(--radius-full);height:12px;overflow:hidden;margin-bottom:var(--space-5);">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:var(--radius-full);transition:width 1s ease;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--text-muted);">
+        <span>${stats.currently_occupied} occupied</span>
+        <span>${stats.total_rooms - stats.currently_occupied} available</span>
+        <span>${stats.total_rooms} total</span>
+      </div>
+      <div style="margin-top:var(--space-5);padding-top:var(--space-5);border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:0.875rem;color:var(--text-secondary)">Total Revenue (Paid)</span>
+        <span style="font-family:var(--font-heading);font-weight:700;color:var(--primary)">${formatCurrency(stats.total_revenue_paid)}</span>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('kpi-grid').innerHTML = `<div style="grid-column:1/-1;color:var(--error);padding:1rem">Failed to load statistics.</div>`;
+  }
+}
+
+// ── Load Recent Bookings ───────────────────────────────────────
+async function loadRecentBookings() {
+  try {
+    const data = await api.getBookings({ page: 1 });
+    const bookings = (data.bookings || []).slice(0, 8);
+
+    const card = document.getElementById('recent-bookings-card');
+    if (!bookings.length) {
+      card.querySelector('div:last-child').innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-muted)">No bookings yet.</div>`;
+      return;
+    }
+
+    card.innerHTML = `
+      <div class="data-table-header">
+        <span class="data-table-header__title">📅 Recent Bookings</span>
+        <a href="/admin/bookings.html" class="btn btn-ghost btn-sm">View All →</a>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Ref</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Amount</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${bookings.map(b => `
+              <tr>
+                <td><code style="font-size:0.78rem;background:var(--gray-50);padding:2px 6px;border-radius:4px">${b.booking_ref}</code></td>
+                <td>
+                  <div style="font-weight:600;font-size:0.875rem">${b.guest_name}</div>
+                  <div style="font-size:0.75rem;color:var(--text-muted)">${b.guest_phone || b.guest_email || ''}</div>
+                </td>
+                <td style="font-size:0.875rem">${b.room_name}</td>
+                <td style="font-size:0.875rem">${formatDate(b.check_in_date)}</td>
+                <td style="font-size:0.875rem">${formatDate(b.check_out_date)}</td>
+                <td>${statusBadge(b.status)}</td>
+                <td style="font-weight:600;font-size:0.875rem">${formatCurrency(b.total_amount)}</td>
+                <td><a href="/admin/bookings.html?id=${b.id}" class="icon-btn icon-btn-view" title="View">👁</a></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('recent-bookings-card').innerHTML = `<div style="padding:1rem;color:var(--error)">Failed to load bookings.</div>`;
+  }
+}
+
+loadStats();
+loadRecentBookings();
+</script>
+</body>
+</html>

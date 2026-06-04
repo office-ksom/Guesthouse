@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Booking Request — KSoM Guesthouse</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>" />
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar__inner">
+      <a href="/" class="navbar__brand">
+        <div class="navbar__logo">KG</div>
+        <div>
+          <div class="navbar__title">KSoM Guesthouse</div>
+          <div class="navbar__subtitle">Kerala School of Mathematics</div>
+        </div>
+      </a>
+      <div class="navbar__nav" id="main-nav">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/rooms.html" class="nav-link">Rooms</a>
+        <a href="/availability.html" class="nav-link">Availability</a>
+        <a href="/gallery.html" class="nav-link">Gallery</a>
+        <a href="/contact.html" class="nav-link">Contact</a>
+      </div>
+      <div class="navbar__cta">
+        <a href="/admin/login.html" class="btn btn-primary btn-sm login-book-btn">Login to Book Rooms</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Hero -->
+  <section class="page-hero">
+    <div class="container">
+      <div class="page-hero__content">
+        <span class="page-hero__label">Booking Instructions</span>
+        <h1 class="page-hero__title">Room Booking Request</h1>
+      </div>
+    </div>
+  </section>
+
+  <!-- Info Section -->
+  <section class="section" style="background:var(--bg); min-height:50vh;">
+    <div class="container" style="max-width: 680px;">
+      <div class="card" style="padding:var(--space-8); text-align:center; box-shadow:var(--shadow-lg);">
+        <div style="font-size:4rem; margin-bottom:var(--space-4);">📋</div>
+        <h2 style="color:var(--primary); margin-bottom:var(--space-4); font-family:var(--font-heading);">Sponsor-Mediated Booking Only</h2>
+        
+        <p style="font-size:1.1rem; line-height:1.6; color:var(--text-secondary); margin-bottom:var(--space-6);">
+          In accordance with KSoM guesthouse regulations, guests are <strong>not permitted</strong> to reserve rooms directly. 
+        </p>
+
+        <div style="text-align:left; background:white; padding:var(--space-6); border-radius:var(--radius-lg); border:1px solid var(--border); margin-bottom:var(--space-6);">
+          <h4 style="margin-bottom:var(--space-2); color:var(--text-primary)">To request accommodation at the KSoM Guesthouse:</h4>
+          <ol style="margin-left:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); color:var(--text-secondary); font-size:0.95rem;">
+            <li>Send an email to your KSoM sponsor, coordinator, supervisor, or host faculty member.</li>
+            <li>Include your requested dates of stay, room type preference (single/double/suite), AC preference, and purpose of visit.</li>
+            <li>Your KSoM sponsor will log in to this portal using their G-Suite credentials to file the official booking request.</li>
+            <li>Upon approval and allotment by the Admin, a confirmation reference will be sent to your sponsor.</li>
+          </ol>
+        </div>
+
+        <div class="flex-center gap-4" style="justify-content:center;">
+          <a href="/admin/login.html" class="btn btn-primary btn-lg login-book-btn">🔑 Login to Book Rooms</a>
+          <a href="/availability.html" class="btn btn-secondary btn-lg">📅 View Vacancy Calendar</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <div class="footer__logo">
+            <div class="footer__logo-icon">KG</div>
+            <div><div class="footer__name">KSoM Guesthouse</div></div>
+          </div>
+          <p class="footer__tagline">Comfortable accommodation for the KSoM academic community.</p>
+        </div>
+        <div>
+          <h5 class="footer__heading">Portal Access</h5>
+          <div class="footer__links">
+            <a href="/admin/login.html" class="footer__link login-book-btn">Login to Book Rooms</a>
+            <a href="/availability.html" class="footer__link">Room Vacancy Status</a>
+            <a href="/contact.html" class="footer__link">Contact Coordinator</a>
+          </div>
+        </div>
+        <div>
+          <h5 class="footer__heading">Contact</h5>
+          <div class="footer__contact">
+            <div class="footer__contact-item">
+              <span class="footer__contact-icon">📍</span>
+              <span id="footer-address">KSoM, Kozhikode, Kerala</span>
+            </div>
+            <div class="footer__contact-item">
+              <span class="footer__contact-icon">📞</span>
+              <span><a id="footer-phone" href="tel:+914952809000" style="color:inherit;text-decoration:none;">+91-495-2809000</a></span>
+            </div>
+            <div class="footer__contact-item">
+              <span class="footer__contact-icon">✉️</span>
+              <span><a id="footer-email" href="mailto:guesthouse@ksom.res.in" style="color:inherit;text-decoration:none;">guesthouse@ksom.res.in</a></span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h5 class="footer__heading">Quick Links</h5>
+          <div class="footer__links">
+            <a href="/gallery.html" class="footer__link">Photo Gallery</a>
+            <a href="/contact.html" class="footer__link">Contact Us</a>
+            <a href="/admin/login.html" class="footer__link">Staff Login</a>
+          </div>
+        </div>
+      </div>
+      <hr class="footer__divider"/>
+      <div class="footer__bottom">
+        <p class="footer__copy">© 2025 Kerala School of Mathematics. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { initNavbar } from '/js/ui.js';
+    import { api } from '/js/api.js';
+    initNavbar();
+
+    // Load dynamic site settings
+    async function loadDynamicSettings() {
+      try {
+        const res = await api.getSettings();
+        if (res && res.settings) {
+          const s = res.settings;
+          if (s.contact_email) {
+            const fEmailEl = document.getElementById('footer-email');
+            if (fEmailEl) {
+              fEmailEl.textContent = s.contact_email;
+              fEmailEl.href = `mailto:${s.contact_email}`;
+            }
+          }
+          if (s.contact_phone) {
+            const fPhoneEl = document.getElementById('footer-phone');
+            if (fPhoneEl) {
+              fPhoneEl.textContent = s.contact_phone;
+              fPhoneEl.href = `tel:${s.contact_phone.replace(/[^+\d]/g, '')}`;
+            }
+          }
+          if (s.contact_address) {
+            const fAddrEl = document.getElementById('footer-address');
+            if (fAddrEl) {
+              fAddrEl.textContent = s.contact_address.replace(/\n/g, ', ');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load dynamic settings, using fallback static HTML:', e);
+      }
+    }
+    loadDynamicSettings();
+  </script>
+</body>
+</html>

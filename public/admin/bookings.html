@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bookings — KSoM Guesthouse Admin</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23003366'/><text y='22' x='6' font-size='18' font-weight='bold' font-family='Arial' fill='%23FF9933'>K</text></svg>" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+<div class="admin-layout" id="app"></div>
+
+<script type="module">
+import { initAdminLayout, api, user } from '/js/auth.js';
+import { renderAdminShell, renderAdminTopbar } from '/js/admin/shell.js';
+import { formatCurrency, formatDate, statusBadge, toast, confirm } from '/js/ui.js';
+
+document.getElementById('app').innerHTML = `
+  ${renderAdminShell()}
+  <div class="admin-main">
+    ${renderAdminTopbar('Bookings', 'Manage guest reservations')}
+    <div class="admin-content">
+
+      <!-- Filters -->
+      <div class="data-table-wrapper" style="margin-bottom:var(--space-5);padding:var(--space-5);">
+        <div style="display:flex;gap:var(--space-4);flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-group" style="flex:1;min-width:160px;">
+            <label class="form-label">Status</label>
+            <select class="form-control" id="filter-status">
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="checked_in">Checked In</option>
+              <option value="checked_out">Checked Out</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;min-width:160px;">
+            <label class="form-label">Date</label>
+            <input class="form-control" type="date" id="filter-date" />
+          </div>
+          <button class="btn btn-primary" id="apply-filter">Apply Filters</button>
+          <button class="btn btn-ghost" id="clear-filter">Clear</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="data-table-wrapper">
+        <div class="data-table-header">
+          <span class="data-table-header__title">📅 All Bookings</span>
+          <div class="data-table-toolbar">
+            <div class="search-input">
+              <span>🔍</span>
+              <input type="text" id="search-input" placeholder="Search by ref or guest…" />
+            </div>
+          </div>
+        </div>
+        <div id="bookings-table-wrap">
+          <div style="padding:3rem;text-align:center;"><div class="spinner" style="margin:0 auto 1rem"></div><p>Loading bookings…</p></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Booking Detail Modal -->
+  <div class="modal-overlay" id="booking-modal" style="display:none">
+    <div class="modal modal-lg">
+      <div class="modal__header">
+        <h3 class="modal__title" id="modal-title">Booking Detail</h3>
+        <span class="modal__close" id="modal-close">✕</span>
+      </div>
+      <div class="modal__body" id="modal-body">Loading…</div>
+      <div class="modal__footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- Room Allotment Modal -->
+  <div class="modal-overlay" id="allotment-modal" style="display:none">
+    <div class="modal" style="max-width:500px;">
+      <div class="modal__header">
+        <h3 class="modal__title">Approve & Allot Room</h3>
+        <span class="modal__close" id="allotment-modal-close">✕</span>
+      </div>
+      <div class="modal__body">
+        <div class="error-box" id="allot-error" style="display:none;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-4);font-size:0.875rem;"></div>
+        
+        <form id="allotment-form">
+          <input type="hidden" id="allot-booking-id" />
+          
+          <div class="form-group" style="margin-bottom:var(--space-4)">
+            <label class="form-label">Guest Name</label>
+            <input class="form-control" type="text" id="allot-guest-name" readonly style="background:var(--gray-50)" />
+          </div>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4)">
+            <div class="form-group">
+              <label class="form-label">Requested Type</label>
+              <input class="form-control" type="text" id="allot-req-type" readonly style="background:var(--gray-50);text-transform:capitalize;" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Requested AC</label>
+              <input class="form-control" type="text" id="allot-req-ac" readonly style="background:var(--gray-50)" />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:var(--space-4)">
+            <label class="form-label required">Select Room to Allot</label>
+            <select class="form-control" id="allot-room-select" required>
+              <option value="">Loading available rooms...</option>
+            </select>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 120px;gap:var(--space-3);margin-bottom:var(--space-6);align-items:center;">
+            <div class="form-group">
+              <label style="font-size:0.85rem;color:var(--text-primary);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:600;padding-top:1.5rem;">
+                <input type="checkbox" id="allot-waive-rent" checked /> Waive Room Rent
+              </label>
+            </div>
+            <div class="form-group" id="allot-rent-group" style="display:none">
+              <label class="form-label">Tariff (Night)</label>
+              <input class="form-control" type="number" id="allot-rent-price" min="0" value="0" />
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-full btn-lg" type="submit" id="allot-confirm-btn">Confirm Allotment & Approve</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Check-In Verification Modal -->
+  <div class="modal-overlay" id="checkin-modal" style="display:none">
+    <div class="modal" style="max-width:460px;">
+      <div class="modal__header">
+        <h3 class="modal__title">Verify Guest ID & Check-In</h3>
+        <span class="modal__close" id="checkin-modal-close">✕</span>
+      </div>
+      <div class="modal__body">
+        <div class="error-box" id="checkin-error" style="display:none;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-4);font-size:0.875rem;"></div>
+        
+        <form id="checkin-form">
+          <input type="hidden" id="checkin-booking-id" />
+          <input type="hidden" id="checkin-guest-id" />
+          
+          <div class="form-group" style="margin-bottom:var(--space-4)">
+            <label class="form-label">Guest Name</label>
+            <input class="form-control" type="text" id="checkin-guest-name" readonly style="background:var(--gray-50)" />
+          </div>
+
+          <div class="form-group" style="margin-bottom:var(--space-4)">
+            <label class="form-label required">ID Card Type</label>
+            <select class="form-control" id="checkin-id-type" required>
+              <option value="">-- Select ID Type --</option>
+              <option value="aadhaar">Aadhaar Card</option>
+              <option value="passport">Passport</option>
+              <option value="driving_license">Driving License</option>
+              <option value="other">Other ID</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:var(--space-6)">
+            <label class="form-label required">ID Card Number</label>
+            <input class="form-control" type="text" id="checkin-id-number" placeholder="Enter ID number..." required />
+          </div>
+
+          <button class="btn btn-primary btn-full btn-lg" type="submit" id="checkin-confirm-btn">Confirm Check-In</button>
+        </form>
+      </div>
+    </div>
+  </div>
+`;
+
+initAdminLayout('Bookings', 'bookings');
+
+let currentPage = 1;
+let allBookings = [];
+let searchTerm = '';
+
+async function loadBookings(params = {}) {
+  const wrap = document.getElementById('bookings-table-wrap');
+  wrap.innerHTML = `<div style="padding:3rem;text-align:center;"><div class="spinner" style="margin:0 auto 1rem"></div><p>Loading bookings…</p></div>`;
+  try {
+    const data = await api.getBookings({ ...params, page: currentPage });
+    allBookings = data.bookings || [];
+    renderTable(allBookings);
+  } catch(e) {
+    wrap.innerHTML = `<div style="padding:2rem;color:var(--error)">Failed to load bookings.</div>`;
+  }
+}
+
+function renderTable(bookings) {
+  const wrap = document.getElementById('bookings-table-wrap');
+  const filtered = searchTerm ? bookings.filter(b =>
+    b.booking_ref?.toLowerCase().includes(searchTerm) ||
+    b.guest_name?.toLowerCase().includes(searchTerm)
+  ) : bookings;
+
+  if (!filtered.length) {
+    wrap.innerHTML = `<div style="padding:3rem;text-align:center;color:var(--text-muted)">No bookings found.</div>`;
+    return;
+  }
+
+  const typeLabels = { single: 'Single', double: 'Double', suite: 'Suite' };
+
+  wrap.innerHTML = `
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr>
+          <th>Booking Ref</th><th>Guest</th><th>Allotted Room / Preference</th>
+          <th>Check-in</th><th>Check-out</th><th>Sponsor / Host</th><th>Status</th>
+          <th>Rent</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${filtered.map(b => {
+            const isRentWaived = b.is_rent_waived === 1;
+            const acText = b.requested_ac === 1 ? 'AC' : 'Non-AC';
+            const reqTypeText = typeLabels[b.requested_type] || b.requested_type || 'Any';
+
+            return `
+              <tr>
+                <td><code style="font-size:0.78rem;background:var(--gray-50);padding:2px 6px;border-radius:4px">${b.booking_ref}</code></td>
+                <td>
+                  <div style="font-weight:600;font-size:0.875rem">${b.guest_name}</div>
+                  ${b.designation ? `<div style="font-size:0.75rem;color:var(--primary);font-weight:500;margin-bottom:2px;">${b.designation}</div>` : ''}
+                  <div style="font-size:0.75rem;color:var(--text-muted)">${b.guest_phone || b.guest_email || ''}</div>
+                </td>
+                <td style="font-size:0.875rem">
+                  ${b.room_name ? `<strong>${b.room_name}</strong><br><span style="font-size:0.72rem;color:var(--text-muted);text-transform:capitalize">${b.room_type}</span>` : `<span style="color:var(--text-muted);font-weight:400;font-size:0.78rem">Unassigned</span><br><span style="font-size:0.72rem;color:var(--primary)">Req: ${reqTypeText} (${acText})</span>`}
+                </td>
+                <td style="font-size:0.875rem">${formatDate(b.check_in_date)}</td>
+                <td style="font-size:0.875rem">${formatDate(b.check_out_date)}</td>
+                <td style="font-size:0.85rem;color:var(--text-secondary)">
+                  ${b.sponsor_email ? `<span title="${b.sponsor_email}">${b.sponsor_email.split('@')[0]}</span>` : '<span style="color:var(--text-muted)">Direct</span>'}
+                </td>
+                <td>${statusBadge(b.status)}</td>
+                <td style="font-weight:700;font-size:0.875rem">
+                  ${isRentWaived ? '<span style="color:#059669;font-weight:600">Waived</span>' : formatCurrency(b.total_amount)}
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <button class="icon-btn icon-btn-view" onclick="viewBooking(${b.id})" title="View Details">👁</button>
+                    ${b.status === 'pending'    ? `<button class="icon-btn icon-btn-edit" onclick="showAllotmentModal(${b.id})" title="Approve & Allot Room">🔑</button>` : ''}
+                    ${b.status === 'confirmed'  ? `<button class="icon-btn icon-btn-edit" onclick="showCheckinModal(${b.id})" title="Check In">🔑</button>` : ''}
+                    ${b.status === 'checked_in' ? `<button class="icon-btn icon-btn-edit" onclick="updateStatus(${b.id},'checked_out')" title="Check Out">🚪</button>` : ''}
+                    ${!['cancelled','checked_out'].includes(b.status) ? `<button class="icon-btn icon-btn-delete" onclick="cancelBooking(${b.id})" title="Cancel">✕</button>` : ''}
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+window.viewBooking = async (id) => {
+  const modal = document.getElementById('booking-modal');
+  const body  = document.getElementById('modal-body');
+  const footer = document.getElementById('modal-footer');
+  modal.style.display = 'flex';
+  body.innerHTML = `<div style="text-align:center;padding:2rem"><div class="spinner" style="margin:0 auto"></div></div>`;
+  footer.innerHTML = '';
+
+  try {
+    const { booking: b } = await api.getBooking(id);
+    const nights = Math.ceil((new Date(b.check_out_date) - new Date(b.check_in_date)) / 86400000);
+    document.getElementById('modal-title').textContent = `Booking ${b.booking_ref}`;
+    
+    const acText = b.requested_ac === 1 ? 'AC' : 'Non-AC';
+    const reqType = b.requested_type ? `${b.requested_type} (${acText})` : '—';
+    const sponsor = b.sponsor_email || 'Direct Booking (Staff)';
+    const rentText = b.is_rent_waived === 1 ? 'Waived (Free of charge)' : `${formatCurrency(b.total_amount)} (${nights} nights)`;
+
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5);">
+        <div>
+          <h5 style="color:var(--primary);margin-bottom:var(--space-3)">📋 Booking Details</h5>
+          <table style="width:100%;font-size:0.875rem;border-collapse:collapse;">
+            ${[
+              ['Status', statusBadge(b.status)],
+              ['Check-in', formatDate(b.check_in_date)],
+              ['Check-out', formatDate(b.check_out_date)],
+              ['Nights', nights],
+              ['Guests', b.num_guests],
+              ['Sponsor', sponsor],
+              ['Requested Preference', reqType],
+              ['Assigned Room', b.room_name || '<span style="color:var(--text-muted)">Unallotted</span>'],
+              ['Room Type', b.room_name ? b.room_type : '—'],
+              ['Rent Status', `<strong>${rentText}</strong>`],
+              ['Purpose of Visit', b.purpose_of_visit || '—'],
+              ['Special Requests', b.special_requests || '—']
+            ].map(([k,v])=>`<tr><td style="padding:6px 0;color:var(--text-muted);width:45%">${k}</td><td style="padding:6px 0">${v}</td></tr>`).join('')}
+          </table>
+        </div>
+        <div>
+          <h5 style="color:var(--primary);margin-bottom:var(--space-3)">👤 Guest Details</h5>
+          <table style="width:100%;font-size:0.875rem;border-collapse:collapse;">
+            ${[
+              ['Name', b.guest_name],
+              ['Designation', b.designation || '—'],
+              ['Email', b.guest_email || '—'],
+              ['Phone', b.guest_phone || '—'],
+              ['Organization', b.organization || '—'],
+              ['ID Type', b.id_type || '—'],
+              ['ID Number', b.id_number || '—']
+            ].map(([k,v])=>`<tr><td style="padding:6px 0;color:var(--text-muted);width:40%">${k}</td><td style="padding:6px 0">${v}</td></tr>`).join('')}
+          </table>
+        </div>
+      </div>
+    `;
+    footer.innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('booking-modal').style.display='none'">Close</button>
+      ${b.status !== 'cancelled' && b.status !== 'checked_out' && b.is_rent_waived === 0 && b.room_name ? `<button class="btn btn-primary btn-sm" onclick="generateInvoiceFor(${b.id})">🧾 Generate Invoice</button>` : ''}
+    `;
+  } catch(e) {
+    body.innerHTML = `<p style="color:var(--error)">Failed to load booking details: ${e.message}</p>`;
+  }
+};
+
+let availableRoomsList = [];
+
+window.showAllotmentModal = async (id) => {
+  const modal = document.getElementById('allotment-modal');
+  const errorBox = document.getElementById('allot-error');
+  const select = document.getElementById('allot-room-select');
+  const form = document.getElementById('allotment-form');
+  
+  errorBox.style.display = 'none';
+  select.innerHTML = '<option value="">Loading available rooms...</option>';
+  modal.style.display = 'flex';
+  
+  document.getElementById('allot-booking-id').value = id;
+
+  try {
+    // 1. Fetch booking
+    const { booking: b } = await api.getBooking(id);
+    
+    document.getElementById('allot-guest-name').value = b.guest_name;
+    document.getElementById('allot-req-type').value = b.requested_type || 'any';
+    document.getElementById('allot-req-ac').value = b.requested_ac === 1 ? 'AC Room' : 'Non-AC Room';
+    
+    // 2. Fetch all rooms
+    const roomsData = await api.getRooms();
+    const rooms = roomsData.rooms || [];
+    
+    // 3. Fetch availability for booking dates
+    const avData = await api.getAvailability(b.check_in_date, b.check_out_date);
+    const avRooms = avData.rooms || [];
+
+    // 4. Find vacant rooms
+    // A room is vacant if its booked_ranges array is empty for the queried dates
+    const vacantRoomIds = avRooms.filter(r => !r.booked_ranges || r.booked_ranges.length === 0).map(r => r.id);
+    
+    availableRoomsList = rooms.filter(r => vacantRoomIds.includes(r.id));
+
+    if (!availableRoomsList.length) {
+      select.innerHTML = '<option value="">No vacant rooms available for these dates!</option>';
+      return;
+    }
+
+    // Filter available rooms that match requested type/AC (preferred but show all)
+    const matchingRooms = availableRoomsList.filter(r => 
+      (!b.requested_type || r.type === b.requested_type) && 
+      (b.requested_ac === undefined || r.is_ac === b.requested_ac)
+    );
+
+    let html = '<option value="">-- Choose Room --</option>';
+    
+    if (matchingRooms.length) {
+      html += `<optgroup label="Matching Rooms (Preferred)">
+        ${matchingRooms.map(r => `<option value="${r.id}" data-price="${r.price_per_night}">${r.name} - ${r.type.toUpperCase()} (${r.is_ac ? 'AC' : 'Non-AC'}) [₹${r.price_per_night}/night]</option>`).join('')}
+      </optgroup>`;
+    }
+    
+    const otherRooms = availableRoomsList.filter(r => !matchingRooms.includes(r));
+    if (otherRooms.length) {
+      html += `<optgroup label="Other Available Rooms">
+        ${otherRooms.map(r => `<option value="${r.id}" data-price="${r.price_per_night}">${r.name} - ${r.type.toUpperCase()} (${r.is_ac ? 'AC' : 'Non-AC'}) [₹${r.price_per_night}/night]</option>`).join('')}
+      </optgroup>`;
+    }
+
+    select.innerHTML = html;
+
+    // Default: Check waive rent box
+    const waiveCheckbox = document.getElementById('allot-waive-rent');
+    const priceGroup = document.getElementById('allot-rent-group');
+    const priceInput = document.getElementById('allot-rent-price');
+    
+    waiveCheckbox.checked = b.is_rent_waived === 1;
+    priceGroup.style.display = waiveCheckbox.checked ? 'none' : 'block';
+    priceInput.value = 0;
+
+    // Handle selection change to populate room tariff
+    select.addEventListener('change', () => {
+      const selectedOpt = select.options[select.selectedIndex];
+      if (selectedOpt && selectedOpt.dataset.price) {
+        priceInput.value = selectedOpt.dataset.price;
+      }
+    });
+
+  } catch(e) {
+    errorBox.textContent = `Failed to initialize allotment: ${e.message}`;
+    errorBox.style.display = 'block';
+  }
+};
+
+// Allotment toggle rent checkbox
+document.getElementById('allot-waive-rent').addEventListener('change', (e) => {
+  const priceGroup = document.getElementById('allot-rent-group');
+  const priceInput = document.getElementById('allot-rent-price');
+  
+  priceGroup.style.display = e.target.checked ? 'none' : 'block';
+  if (e.target.checked) {
+    priceInput.value = 0;
+  } else {
+    const select = document.getElementById('allot-room-select');
+    const selectedOpt = select.options[select.selectedIndex];
+    if (selectedOpt && selectedOpt.dataset.price) {
+      priceInput.value = selectedOpt.dataset.price;
+    }
+  }
+});
+
+// Allotment Form submit
+document.getElementById('allotment-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('allot-booking-id').value;
+  const roomId = document.getElementById('allot-room-select').value;
+  const waiveRent = document.getElementById('allot-waive-rent').checked ? 1 : 0;
+  const priceVal = parseFloat(document.getElementById('allot-rent-price').value) || 0;
+  const errorBox = document.getElementById('allot-error');
+
+  errorBox.style.display = 'none';
+
+  if (!roomId) {
+    errorBox.textContent = 'Please select a room to allot.';
+    errorBox.style.display = 'block';
+    return;
+  }
+
+  try {
+    const payload = {
+      status: 'confirmed',
+      room_id: parseInt(roomId),
+      is_rent_waived: waiveRent
+    };
+
+    // If rent is not waived, we can pass the custom price_per_night or total_amount.
+    // Our backend will compute the total amount from nights * price_per_night if we don't pass total_amount.
+    // If they specified a custom nightly tariff, let's compute and pass the total_amount:
+    if (waiveRent === 0) {
+      const { booking: b } = await api.getBooking(id);
+      const nights = Math.ceil((new Date(b.check_out_date) - new Date(b.check_in_date)) / 86400000);
+      payload.total_amount = nights * priceVal;
+    }
+
+    await api.updateBooking(id, payload);
+    toast('Room allotted and booking approved successfully!', 'success');
+    document.getElementById('allotment-modal').style.display = 'none';
+    loadBookings(getFilters());
+  } catch(err) {
+    errorBox.textContent = err.message || 'Allotment failed.';
+    errorBox.style.display = 'block';
+  }
+});
+
+window.generateInvoiceFor = async (bookingId) => {
+  try {
+    const data = await api.createInvoice({ booking_id: bookingId });
+    toast(`Invoice ${data.invoice_number} created!`, 'success');
+    document.getElementById('booking-modal').style.display = 'none';
+  } catch(e) {
+    toast(e.message || 'Failed to create invoice.', 'error');
+  }
+};
+
+window.updateStatus = async (id, status) => {
+  const labels = { confirmed: 'confirm', checked_in: 'check in', checked_out: 'check out' };
+  confirm(`Are you sure you want to ${labels[status] || status} this booking?`, async () => {
+    try {
+      await api.updateBooking(id, { status });
+      toast(`Booking ${status.replace('_', ' ')} successfully!`, 'success');
+      loadBookings(getFilters());
+    } catch(e) {
+      toast(e.message || 'Failed to update booking.', 'error');
+    }
+  });
+};
+
+window.cancelBooking = async (id) => {
+  confirm('Cancel this booking? This action cannot be undone.', async () => {
+    try {
+      await api.cancelBooking(id);
+      toast('Booking cancelled.', 'warning');
+      loadBookings(getFilters());
+    } catch(e) {
+      toast(e.message || 'Failed to cancel booking.', 'error');
+    }
+  }, true);
+};
+
+function getFilters() {
+  const status = document.getElementById('filter-status').value;
+  const date   = document.getElementById('filter-date').value;
+  const f = {};
+  if (status) f.status = status;
+  if (date) f.date = date;
+  return f;
+}
+
+document.getElementById('apply-filter').addEventListener('click', () => loadBookings(getFilters()));
+document.getElementById('clear-filter').addEventListener('click', () => {
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-date').value = '';
+  loadBookings();
+});
+document.getElementById('search-input').addEventListener('input', e => {
+  searchTerm = e.target.value.toLowerCase();
+  renderTable(allBookings);
+});
+document.getElementById('modal-close').addEventListener('click', () => {
+  document.getElementById('booking-modal').style.display = 'none';
+});
+document.getElementById('booking-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('booking-modal')) document.getElementById('booking-modal').style.display = 'none';
+});
+document.getElementById('allotment-modal-close').addEventListener('click', () => {
+  document.getElementById('allotment-modal').style.display = 'none';
+});
+document.getElementById('allotment-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('allotment-modal')) document.getElementById('allotment-modal').style.display = 'none';
+});
+
+window.showCheckinModal = async (id) => {
+  const modal = document.getElementById('checkin-modal');
+  const errorBox = document.getElementById('checkin-error');
+  
+  errorBox.style.display = 'none';
+  document.getElementById('checkin-booking-id').value = id;
+  
+  // Set placeholder/loading
+  document.getElementById('checkin-guest-name').value = 'Loading guest...';
+  document.getElementById('checkin-id-type').value = '';
+  document.getElementById('checkin-id-number').value = '';
+  
+  modal.style.display = 'flex';
+  
+  try {
+    const { booking: b } = await api.getBooking(id);
+    document.getElementById('checkin-guest-id').value = b.guest_id;
+    document.getElementById('checkin-guest-name').value = b.guest_name;
+    document.getElementById('checkin-id-type').value = b.id_type || '';
+    document.getElementById('checkin-id-number').value = b.id_number || '';
+  } catch (e) {
+    errorBox.textContent = `Failed to load guest details: ${e.message}`;
+    errorBox.style.display = 'block';
+  }
+};
+
+document.getElementById('checkin-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const bookingId = document.getElementById('checkin-booking-id').value;
+  const guestId = document.getElementById('checkin-guest-id').value;
+  const idType = document.getElementById('checkin-id-type').value;
+  const idNumber = document.getElementById('checkin-id-number').value.trim();
+  const errorBox = document.getElementById('checkin-error');
+  const btn = document.getElementById('checkin-confirm-btn');
+  
+  errorBox.style.display = 'none';
+  if (!idType || !idNumber) {
+    errorBox.textContent = 'Please select ID Card Type and enter ID Number.';
+    errorBox.style.display = 'block';
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.textContent = 'Checking in...';
+  
+  try {
+    // 1. Update guest's ID details
+    await api.put(`/guests/${guestId}`, {
+      id_type: idType,
+      id_number: idNumber
+    });
+    
+    // 2. Perform check-in booking status update
+    await api.updateBooking(bookingId, { status: 'checked_in' });
+    
+    toast('Guest checked in successfully!', 'success');
+    document.getElementById('checkin-modal').style.display = 'none';
+    loadBookings(getFilters());
+  } catch (err) {
+    errorBox.textContent = err.message || 'Check-in failed.';
+    errorBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirm Check-In';
+  }
+});
+
+document.getElementById('checkin-modal-close').addEventListener('click', () => {
+  document.getElementById('checkin-modal').style.display = 'none';
+});
+document.getElementById('checkin-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('checkin-modal')) {
+    document.getElementById('checkin-modal').style.display = 'none';
+  }
+});
+
+loadBookings();
+</script>
+</body>
+</html>
