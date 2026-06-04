@@ -76,6 +76,11 @@
           <input type="checkbox" id="use-mock-login" /> Use Mock G-Suite Login (Testing)
         </label>
       </div>
+      <div id="google-login-trouble" style="display:none; text-align:center; margin-top:var(--space-4);">
+        <button class="btn btn-ghost btn-sm" type="button" id="trouble-login-btn" style="font-size:0.75rem;color:var(--text-muted);border:none;background:none;text-decoration:underline;cursor:pointer;padding:0;">
+          Trouble signing in with Google? Show Staff / Mock Login
+        </button>
+      </div>
     </div>
 
     <!-- Mock G-Suite Form -->
@@ -149,6 +154,12 @@
       mockSection.style.display = e.target.checked ? 'block' : 'none';
     });
 
+    document.getElementById('trouble-login-btn').addEventListener('click', () => {
+      document.getElementById('mock-checkbox-container').style.display = 'block';
+      document.getElementById('staff-login-section').style.display = 'block';
+      document.getElementById('google-login-trouble').style.display = 'none';
+    });
+
     // Check if '?dev=true' or '?dev=1' is in query params
     const urlParams = new URLSearchParams(window.location.search);
     const isDevMode = urlParams.get('dev') === 'true' || urlParams.get('dev') === '1';
@@ -169,6 +180,7 @@
           
           document.getElementById('google-signin-div').style.display = 'flex';
           document.getElementById('google-login-btn').style.display = 'none';
+          document.getElementById('google-login-trouble').style.display = 'block';
           
           google.accounts.id.initialize({
             client_id: clientId,
