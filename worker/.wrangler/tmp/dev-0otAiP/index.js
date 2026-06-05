@@ -3718,7 +3718,7 @@ init_modules_watch_stub();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
-async function sendGroupApprovalEmail(recipient, groupRef, bookings2, senderEmail, senderName) {
+async function sendGroupApprovalEmail(env2, recipient, groupRef, bookings2, senderEmail, senderName) {
   if (!recipient) {
     console.warn("[Email System] No recipient email specified. Skipping email.");
     return;
@@ -3802,47 +3802,177 @@ async function sendGroupApprovalEmail(recipient, groupRef, bookings2, senderEmai
     </body>
     </html>
   `;
-  const payload = {
-    personalizations: [
-      {
-        to: [{ email: recipient }]
+  let fromEmail = env2.EMAIL_FROM_ADDRESS || "guesthouse@ksom.res.in";
+  if (senderEmail && (senderEmail.toLowerCase().endsWith("@ksom.res.in") || senderEmail.toLowerCase().endsWith(".ksom.res.in"))) {
+    fromEmail = senderEmail;
+  }
+  const fromName = env2.EMAIL_FROM_NAME || senderName || "KSoM Guesthouse";
+  let success = false;
+  let diagnosticLog = "";
+  if (env2.GOOGLE_CLIENT_ID && env2.GOOGLE_CLIENT_SECRET && env2.GOOGLE_REFRESH_TOKEN) {
+    try {
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: env2.GOOGLE_CLIENT_ID,
+          client_secret: env2.GOOGLE_CLIENT_SECRET,
+          refresh_token: env2.GOOGLE_REFRESH_TOKEN,
+          grant_type: "refresh_token"
+        })
+      });
+      if (!tokenRes.ok) {
+        const errText = await tokenRes.text();
+        throw new Error(`OAuth token refresh failed: ${tokenRes.status} - ${errText}`);
       }
-    ],
-    from: {
-      email: senderEmail || "guesthouse@ksom.res.in",
-      name: senderName || "KSoM Guesthouse"
-    },
-    subject,
-    content: [
-      {
-        type: "text/html",
-        value: htmlBody
+      const tokenData = await tokenRes.json();
+      const accessToken = tokenData.access_token;
+      const rawMessage = [
+        `From: ${fromName} <${fromEmail}>`,
+        `To: ${recipient}`,
+        `Subject: ${subject}`,
+        "MIME-Version: 1.0",
+        "Content-Type: text/html; charset=utf-8",
+        "",
+        htmlBody
+      ].join("\r\n");
+      const encodedRaw = btoa(unescape(encodeURIComponent(rawMessage))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+      const gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          raw: encodedRaw
+        })
+      });
+      if (gmailRes.ok) {
+        success = true;
+        console.info(`[Email System] Email successfully dispatched via Gmail API (Google OAuth2) to ${recipient}`);
+      } else {
+        const errText = await gmailRes.text();
+        diagnosticLog += `Gmail API failed: ${gmailRes.status} - ${errText}. `;
       }
-    ]
-  };
-  try {
-    const res = await fetch("https://api.mailchannels.net/tx/v1/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Mailchannels API error: ${res.status} - ${errText}`);
+    } catch (e) {
+      diagnosticLog += `Gmail API error: ${e.message}. `;
     }
-    console.info(`[Email System] Email successfully dispatched via Mailchannels to ${recipient}`);
-  } catch (err) {
-    console.error(`[Email System] Failed to dispatch email via Mailchannels to ${recipient}:`, err.message);
-    console.info("========================================================================");
-    console.info(`\u2709\uFE0F FALLBACK SIMULATED EMAIL FROM: ${senderName || "KSoM Guesthouse"} <${senderEmail || "guesthouse@ksom.res.in"}> TO: ${recipient}`);
-    console.info(`\u{1F4C2} SUBJECT: ${subject}`);
-    console.info("------------------------------------------------------------------------");
-    bookings2.forEach((b, idx) => {
-      console.info(`Guest #${idx + 1}: ${b.guest_name} | Room: ${b.room_name || "Not Allotted"} | Status: ${b.status}`);
-    });
-    console.info("========================================================================");
+  }
+  if (!success && env2.RESEND_API_KEY) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env2.RESEND_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: `${fromName} <${fromEmail}>`,
+          to: [recipient],
+          subject,
+          html: htmlBody
+        })
+      });
+      if (res.ok) {
+        success = true;
+        console.info(`[Email System] Email successfully dispatched via Resend to ${recipient}`);
+      } else {
+        const errText = await res.text();
+        diagnosticLog += `Resend API failed: ${res.status} - ${errText}. `;
+      }
+    } catch (e) {
+      diagnosticLog += `Resend error: ${e.message}. `;
+    }
+  }
+  if (!success && env2.BREVO_API_KEY) {
+    try {
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": env2.BREVO_API_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          sender: { name: fromName, email: fromEmail },
+          to: [{ email: recipient }],
+          subject,
+          htmlContent: htmlBody
+        })
+      });
+      if (res.ok) {
+        success = true;
+        console.info(`[Email System] Email successfully dispatched via Brevo to ${recipient}`);
+      } else {
+        const errText = await res.text();
+        diagnosticLog += `Brevo API failed: ${res.status} - ${errText}. `;
+      }
+    } catch (e) {
+      diagnosticLog += `Brevo error: ${e.message}. `;
+    }
+  }
+  if (!success && env2.SENDGRID_API_KEY) {
+    try {
+      const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env2.SENDGRID_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: recipient }] }],
+          from: { name: fromName, email: fromEmail },
+          subject,
+          content: [{ type: "text/html", value: htmlBody }]
+        })
+      });
+      if (res.ok) {
+        success = true;
+        console.info(`[Email System] Email successfully dispatched via SendGrid to ${recipient}`);
+      } else {
+        const errText = await res.text();
+        diagnosticLog += `SendGrid API failed: ${res.status} - ${errText}. `;
+      }
+    } catch (e) {
+      diagnosticLog += `SendGrid error: ${e.message}. `;
+    }
+  }
+  if (!success) {
+    const mcHeaders = { "Content-Type": "application/json" };
+    if (env2.MAILCHANNELS_API_KEY) {
+      mcHeaders["X-Api-Key"] = env2.MAILCHANNELS_API_KEY;
+    }
+    const payload = {
+      personalizations: [{ to: [{ email: recipient }] }],
+      from: { name: fromName, email: fromEmail },
+      subject,
+      content: [{ type: "text/html", value: htmlBody }]
+    };
+    try {
+      const res = await fetch("https://api.mailchannels.net/tx/v1/send", {
+        method: "POST",
+        headers: mcHeaders,
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        success = true;
+        console.info(`[Email System] Email successfully dispatched via Mailchannels to ${recipient}`);
+      } else {
+        const errText = await res.text();
+        diagnosticLog += `Mailchannels API failed: ${res.status} - ${errText}. `;
+        throw new Error(`Mailchannels API error: ${res.status} - ${errText}`);
+      }
+    } catch (err) {
+      console.error(`[Email System] Failed to dispatch email via Mailchannels to ${recipient}:`, err.message);
+      console.info("========================================================================");
+      console.info(`\u2709\uFE0F FALLBACK SIMULATED EMAIL FROM: ${fromName} <${fromEmail}> TO: ${recipient}`);
+      console.info(`\u{1F4C2} SUBJECT: ${subject}`);
+      console.info("------------------------------------------------------------------------");
+      bookings2.forEach((b, idx) => {
+        console.info(`Guest #${idx + 1}: ${b.guest_name} | Room: ${b.room_name || "Not Allotted"} | Status: ${b.status}`);
+      });
+      console.info("========================================================================");
+      console.info(`[Provider Diagnostics] ${diagnosticLog}`);
+    }
   }
 }
 __name(sendGroupApprovalEmail, "sendGroupApprovalEmail");
@@ -4022,11 +4152,11 @@ async function triggerBookingEmail(c, bookingId, oldStatus, newStatus, senderEma
       const pendingBookings = groupBookings.filter((b) => b.status === "pending");
       if (pendingBookings.length === 0) {
         if (sponsorMail) {
-          await sendGroupApprovalEmail(sponsorMail, booking.group_ref, groupBookings, senderEmail, senderName);
+          await sendGroupApprovalEmail(c.env, sponsorMail, booking.group_ref, groupBookings, senderEmail, senderName);
         }
         for (const b of groupBookings) {
           if (b.status === "confirmed" && b.guest_email && b.guest_email !== sponsorMail) {
-            await sendGroupApprovalEmail(b.guest_email, null, [b], senderEmail, senderName);
+            await sendGroupApprovalEmail(c.env, b.guest_email, null, [b], senderEmail, senderName);
           }
         }
       }
@@ -4048,10 +4178,10 @@ async function triggerBookingEmail(c, bookingId, oldStatus, newStatus, senderEma
           status: "confirmed"
         };
         if (sponsorMail) {
-          await sendGroupApprovalEmail(sponsorMail, null, [bInfo], senderEmail, senderName);
+          await sendGroupApprovalEmail(c.env, sponsorMail, null, [bInfo], senderEmail, senderName);
         }
         if (guestObj?.email && guestObj.email !== sponsorMail) {
-          await sendGroupApprovalEmail(guestObj.email, null, [bInfo], senderEmail, senderName);
+          await sendGroupApprovalEmail(c.env, guestObj.email, null, [bInfo], senderEmail, senderName);
         }
       }
     }

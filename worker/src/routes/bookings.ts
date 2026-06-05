@@ -191,60 +191,30 @@ async function triggerBookingEmail(c: Context<{ Bindings: Env }>, bookingId: num
 
     const sponsorMail = booking.sponsor_email;
 
-    if (booking.group_ref) {
-      // Find all bookings in this group
-      const { results: groupBookings } = await c.env.DB
-        .prepare(`
-          SELECT b.id, b.status, b.booking_ref, b.check_in_date, b.check_out_date,
-                 g.name as guest_name, g.email as guest_email, g.designation, r.name as room_name
-          FROM bookings b
-          JOIN guests g ON b.guest_id = g.id
-          LEFT JOIN rooms r ON b.room_id = r.id
-          WHERE b.group_ref = ?
-        `)
-        .bind(booking.group_ref)
-        .all<any>();
-
-      // Check if any other booking in this group is still pending
-      const pendingBookings = groupBookings.filter(b => b.status === 'pending');
-
-      if (pendingBookings.length === 0) {
-        // All bookings in the group are resolved (either confirmed or cancelled)!
-        // Send a single consolidated email to the sponsor.
-        if (sponsorMail) {
-          await sendGroupApprovalEmail(sponsorMail, booking.group_ref, groupBookings, senderEmail, senderName);
-        }
-        // Send individual confirmation emails only to guests whose bookings are confirmed
-        for (const b of groupBookings) {
-          if (b.status === 'confirmed' && b.guest_email && b.guest_email !== sponsorMail) {
-            await sendGroupApprovalEmail(b.guest_email, null, [b], senderEmail, senderName);
-          }
-        }
+    if (newStatus === 'confirmed') {
+      const guestObj = await c.env.DB.prepare('SELECT name, email, designation FROM guests WHERE id = ?').bind(booking.guest_id).first<any>();
+      let rName = 'Not Allotted';
+      if (booking.room_id) {
+        const roomObj = await c.env.DB.prepare('SELECT name FROM rooms WHERE id = ?').bind(booking.room_id).first<any>();
+        rName = roomObj?.name || 'Allotted';
       }
-    } else {
-      // Single booking (no group_ref)
-      if (newStatus === 'confirmed') {
-        const guestObj = await c.env.DB.prepare('SELECT name, email, designation FROM guests WHERE id = ?').bind(booking.guest_id).first<any>();
-        let rName = 'Not Allotted';
-        if (booking.room_id) {
-          const roomObj = await c.env.DB.prepare('SELECT name FROM rooms WHERE id = ?').bind(booking.room_id).first<any>();
-          rName = roomObj?.name || 'Allotted';
-        }
-        const bInfo = {
-          booking_ref: booking.booking_ref,
-          guest_name: guestObj?.name || 'Guest',
-          designation: guestObj?.designation || '',
-          check_in_date: booking.check_in_date,
-          check_out_date: booking.check_out_date,
-          room_name: rName,
-          status: 'confirmed'
-        };
-        if (sponsorMail) {
-          await sendGroupApprovalEmail(sponsorMail, null, [bInfo], senderEmail, senderName);
-        }
-        if (guestObj?.email && guestObj.email !== sponsorMail) {
-          await sendGroupApprovalEmail(guestObj.email, null, [bInfo], senderEmail, senderName);
-        }
+      const bInfo = {
+        booking_ref: booking.booking_ref,
+        guest_name: guestObj?.name || 'Guest',
+        designation: guestObj?.designation || '',
+        check_in_date: booking.check_in_date,
+        check_out_date: booking.check_out_date,
+        room_name: rName,
+        status: 'confirmed'
+      };
+
+      // Send confirmation to the sponsor
+      if (sponsorMail) {
+        await sendGroupApprovalEmail(c.env, sponsorMail, booking.group_ref, [bInfo], senderEmail, senderName);
+      }
+      // Send confirmation to the guest if guest email exists and is different from sponsor's email
+      if (guestObj?.email && guestObj.email !== sponsorMail) {
+        await sendGroupApprovalEmail(c.env, guestObj.email, null, [bInfo], senderEmail, senderName);
       }
     }
   } catch (err: any) {

@@ -39,7 +39,7 @@
 <div class="admin-layout" id="app"></div>
 
 <script type="module">
-  import { initAdminLayout, api } from '/js/auth.js';
+  import { initAdminLayout, api, user } from '/js/auth.js';
   import { renderAdminShell, renderAdminTopbar } from '/js/admin/shell.js';
   import { toast, confirm } from '/js/ui.js';
 
@@ -58,6 +58,7 @@
             <button class="cms-sidebar-btn" data-page="availability">📅 Availability</button>
             <button class="cms-sidebar-btn" data-page="gallery">🖼️ Gallery Page</button>
             <button class="cms-sidebar-btn" data-page="contact">📞 Contact Page</button>
+            <button class="cms-sidebar-btn" data-page="email_diagnostics" style="color:var(--primary); font-weight:700;">📧 Email Diagnostics</button>
           </div>
 
           <!-- Page Content Editor -->
@@ -105,6 +106,15 @@
   }
 
   function loadPageSections() {
+    if (activePage === 'email_diagnostics') {
+      renderEmailDiagnostics();
+      return;
+    }
+    
+    // Ensure footer is visible for layout pages
+    const footerBar = document.querySelector('.cms-footer-bar');
+    if (footerBar) footerBar.style.display = 'flex';
+
     const key = `sections_${activePage}`;
     const val = settings[key] || '[]';
     try {
@@ -735,6 +745,66 @@
       }
     });
   });
+
+  function renderEmailDiagnostics() {
+    const container = document.getElementById('page-editor-container');
+    const footerBar = document.querySelector('.cms-footer-bar');
+    if (footerBar) footerBar.style.display = 'none';
+
+    container.innerHTML = `
+      <div class="card" style="padding:var(--space-6); background:white;">
+        <h3 style="font-family:var(--font-heading); color:var(--primary); margin-top:0; margin-bottom:var(--space-2); font-size:1.2rem">
+          📧 Email System Diagnostics
+        </h3>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:var(--space-5); line-height:1.5;">
+          Test the guesthouse portal email dispatcher. This will send a mock room allotment confirmation email to your logged-in administrator account email address (<strong>${user?.email || 'your email'}</strong>) using the active backend configurations and output the step-by-step diagnostic log.
+        </p>
+
+        <button class="btn btn-primary btn-lg" id="send-test-email-btn" style="margin-bottom:var(--space-5)">
+          ⚡ Send Test Email & Run Diagnostics
+        </button>
+
+        <div id="test-email-results" style="display:none; margin-top:var(--space-4);">
+          <h4 id="test-email-status" style="margin-top:0; margin-bottom:var(--space-3); font-weight:700; font-size:1.1rem"></h4>
+          
+          <div style="margin-bottom:var(--space-2); font-weight:600; font-size:0.875rem; color:var(--text-secondary);">Step-by-Step Dispatch Logs:</div>
+          <pre id="test-email-logs" style="background:#0f172a; color:#f8fafc; padding:var(--space-4); border-radius:var(--radius-md); font-family:monospace; font-size:0.825rem; white-space:pre-wrap; overflow-x:auto; border:1px solid #1e293b; max-height:400px; line-height:1.5;"></pre>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('send-test-email-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('send-test-email-btn');
+      const resultsDiv = document.getElementById('test-email-results');
+      const statusH = document.getElementById('test-email-status');
+      const logsPre = document.getElementById('test-email-logs');
+
+      btn.disabled = true;
+      btn.textContent = 'Running diagnostics...';
+      resultsDiv.style.display = 'none';
+
+      try {
+        const res = await api.post('/settings/test-email', {});
+        resultsDiv.style.display = 'block';
+        if (res.success) {
+          statusH.style.color = '#059669';
+          statusH.textContent = '✅ Success! Email successfully sent.';
+        } else {
+          statusH.style.color = '#dc2626';
+          statusH.textContent = '❌ Failed to send email.';
+        }
+        logsPre.textContent = res.log || 'No logs returned.';
+      } catch (err) {
+        resultsDiv.style.display = 'block';
+        statusH.style.color = '#dc2626';
+        statusH.textContent = '❌ Error triggering test email.';
+        logsPre.textContent = err.message || err;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Send Test Email & Run Diagnostics';
+      }
+    });
+  }
 
   loadSettings();
 </script>
